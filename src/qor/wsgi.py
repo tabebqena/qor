@@ -491,7 +491,6 @@ class KoreServerHandler(ServerHandler):
             result = self.stdout.write(data)
 
     def _flush(self) -> None:
-        # print("_flush")
         pass
 
     def send_headers(self) -> None:
