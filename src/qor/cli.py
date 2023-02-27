@@ -18,7 +18,7 @@ except:
     pass
 
 
-DEFAULT_IGNORE_REJEXES = [".*.venv.*", ".*venv.*", ".*env.*", ".*.env.*", ".*.pyc"]
+DEFAULT_IGNORE_REJEXES = [".*\.venv.*", ".*venv.*", ".*env.*", ".*\.env.*", ".*\.pyc"]
 
 
 def find_app():
@@ -130,7 +130,7 @@ def routes(app):
         o = Watcher(
             path=watch_path,
             command=["kore", app, "print-routes-exit"],
-            regexes=[".*.py"],
+            regexes=[".*\.py$"],
             logger=logger,
             shell=False,
         )
