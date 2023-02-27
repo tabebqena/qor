@@ -165,9 +165,9 @@ example/dev_logs/*
 */rpidfile
 fast_testing/*
 # ignotr it now
-example/*
 workspace.code-workspace
 run_code.sh
 logs
 .vscode/*
 log
+examples/*
