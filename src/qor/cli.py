@@ -18,7 +18,7 @@ except:
     pass
 
 
-DEFAULT_IGNORE_REJEXES = [".*\.venv.*", ".*venv.*", ".*env.*", ".*\.env.*", ".*\.pyc"]
+DEFAULT_IGNORE_REJEXES = [".*\.venv.*", ".*venv.*", ".*env.*", ".*\.env.*", ".*\.pyc", ".*pidfile"]
 
 
 def find_app():
@@ -70,7 +70,7 @@ def run(app, watch):
         o = Watcher(
             path=watch_path,
             command=["kore", app],
-            regexes=[".*.py"],
+            regexes=[".*\.py$"],
             ignore_regexes=DEFAULT_IGNORE_REJEXES,
             logger=logger,
             shell=False,
