@@ -3,6 +3,7 @@ import pytest
 from qor.router import Route, Router
 import re
 
+
 def index(req):
     pass
 
@@ -34,8 +35,8 @@ def test_router_add_route():
     assert route
     assert route.raw_path == "/"
     assert re.compile(route.path).match("/")
-    
+
     route = r.find_route_by_name("about")
     assert route
-    assert route.raw_path == "/about"    
+    assert route.raw_path == "/about"
     assert re.compile(route.path).match("/about")

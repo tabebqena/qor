@@ -53,12 +53,12 @@ def parse_return_value(value) -> Tuple[int, bytes]:
     exception = None
 
     if isinstance(value, tuple) and len(value) == 2:
-            try:
-                status = int(value[0])
-                value_bytes = to_bytes(value[1])
-            except Exception as e:
-                logging.error(e)
-                exception = e
+        try:
+            status = int(value[0])
+            value_bytes = to_bytes(value[1])
+        except Exception as e:
+            logging.error(e)
+            exception = e
     else:
         try:
             status = 200

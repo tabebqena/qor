@@ -49,7 +49,9 @@ def find_between(s, start, end):
 
 
 def multi_urljoin(*parts):
-    _parts = [ part.replace("/", "", 1) if part.startswith("/") else part for part in  parts]
+    _parts = [
+        part.replace("/", "", 1) if part.startswith("/") else part for part in parts
+    ]
     rv = "/".join(_parts)
     # return urljoin(
     #      parts[0], "/".join(part.strip("/") for part in parts[1:])
@@ -272,8 +274,6 @@ class Route(dict):
     def parts(self):
         return self["parts"]
 
-    
-
     @property
     def class_args(self):
         return self["class_args"]
@@ -400,11 +400,11 @@ class Router(RouterBase):
             )
 
     def mount_router(self, path: str, router: "Router"):
-        """mount child router to this router, this means that the child urls 
+        """mount child router to this router, this means that the child urls
         will be built as sub urls to this router path.
-        
+
         example:
-        
+
         >> child = Router()
         >> child.add_route(path="/child_index", handler="child_index", name="child_index")
         >> main = Router()
@@ -413,7 +413,7 @@ class Router(RouterBase):
         >> for route in main.routes:
               print(route.name, " ", route.path )
         >> child:child_index  /child/child_index
-        
+
         Args:
             path (str): base bath for all child router paths.
             router (Router): the child router.
@@ -431,31 +431,34 @@ class Router(RouterBase):
 
             r_name = r.get("name")
             if r_name and base_names:
-                    _names = copy.copy(base_names)
-                    _names.append(r_name)
-                    r["name"] = ":".join(_names).replace(":", "", 1)
+                _names = copy.copy(base_names)
+                _names.append(r_name)
+                r["name"] = ":".join(_names).replace(":", "", 1)
             _routes.append(r)
         return _routes
-    
-    def __join_self_routes(self, base_names=[], base_paths=[] ):
+
+    def __join_self_routes(self, base_names=[], base_paths=[]):
         return self.__join_routes(self._raw_routes, base_names, base_paths)
-    
+
     def __join_nested_routes(self, base_names=[], base_paths=[]):
         rv = []
         for path, router in self._routers.items():
-            rv.extend( router.__join_self_routes(base_names+[router.name], base_paths+[path]) )
-            rv.extend( router.__join_nested_routes(
-                                        base_names+[router.name], 
-                                        base_paths+[path]
-                        )
-                      )
+            rv.extend(
+                router.__join_self_routes(
+                    base_names + [router.name], base_paths + [path]
+                )
+            )
+            rv.extend(
+                router.__join_nested_routes(
+                    base_names + [router.name], base_paths + [path]
+                )
+            )
         return rv
-    
+
     def __join_all(self, base_names=[], base_paths=[]):
-        rv = self.__join_self_routes(base_names+[self.name], base_paths)
-        rv.extend(self.__join_nested_routes(base_names+[self.name], base_paths))
+        rv = self.__join_self_routes(base_names + [self.name], base_paths)
+        rv.extend(self.__join_nested_routes(base_names + [self.name], base_paths))
         return rv
-    
 
     # names = all parent names
     # paths = all parent paths
@@ -478,9 +481,7 @@ class Router(RouterBase):
             path_conveters = self._path_converters
             path_conveters.update(route.get("path_conveters", {}))
             raw_path = route.get("raw_path")
-            
-            
-            
+
             parts = self.parse_route_path(raw_path, path_conveters)
             path = kore_re_string(parts)
             self._routes.append(
@@ -572,7 +573,7 @@ class Router(RouterBase):
                     }
                 )
         return parts
-    
+
     def reverse(self, __name, method=None, **kwargs):
         route = self.find_route_by_name(__name)
         if not route:
@@ -581,7 +582,7 @@ class Router(RouterBase):
 
     def __repr__(self) -> str:
         return f"<Router {self.name}>"
-    
+
     def show_all(self):
         for route in self.routes:
             print(route.name, "    ", route.raw_path)

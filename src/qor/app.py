@@ -286,7 +286,7 @@ class Qor(BaseApp):
                 print(route.name, route.handler, route.raw_path, route.methods)
             print("\n")
             self.kore.shutdown()
-            
+
     def setup(self):
         """First call of this method is invoked by `configure` which should be called by the `kore` server.
         This method will:
@@ -441,7 +441,7 @@ class Qor(BaseApp):
 
     def start(self, *args):
         # self.__register_prerequest()
-        
+
         self._before_request_callbacks = tuple(self._before_request_callbacks)
         self._after_request_callbacks = tuple(reversed(self._after_request_callbacks))
         self.__register_routes()

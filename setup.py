@@ -6,11 +6,11 @@ setup(
     description="python framework for kore server",
     packages=["src"],
     install_requires=[
-        'Click',
+        "Click",
     ],
     entry_points={
-        'console_scripts': [
-            'yourscript = yourscript:cli',
+        "console_scripts": [
+            "yourscript = yourscript:cli",
         ],
     },
 )

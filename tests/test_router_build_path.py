@@ -138,44 +138,42 @@ def test_part_not_matched():
 
 def test_router_build():
     router = Router()
+
     def handle():
         ...
+
     router.add_route(
         "user/<id:int>",
         handle,
         "user_page",
     )
-    
+
     router.add_route(
         "user/<name>",
         handle,
         "user_name",
     )
-    
+
     router.add_route(
         "user/<age:float>",
         handle,
         "user_age",
     )
     router.build_routes()
-    
+
     assert router.reverse("user_page", id=5) == "/user/5"
     assert router.reverse("user_page", id="5") == "/user/5"
-    
+
     with pytest.raises(Exception) as e:
         router.reverse("user_page", id="p")
     with pytest.raises(Exception) as e:
         router.reverse("user_page", id=1.5)
-    
-    
+
     assert router.reverse("user_name", name="ahmad") == "/user/ahmad"
     with pytest.raises(Exception) as e:
         router.reverse("user_name", id=8)
     with pytest.raises(Exception) as e:
         router.reverse("user_name")
-        
+
     with pytest.raises(Exception) as e:
         router.reverse("user_delete")
-        
-    
-    

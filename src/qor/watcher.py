@@ -12,12 +12,17 @@ class Reloader(RegexMatchingEventHandler):
     def __init__(
         self,
         callback,
-        patterns=None,
-        ignore_patterns=None,
-        ignore_directories=False,
+        regexes=None,
+        ignore_regexes=None,
+        ignore_directories=True,
         case_sensitive=False,
     ):
-        super().__init__(patterns, ignore_patterns, ignore_directories, case_sensitive)
+        super().__init__(
+            regexes=regexes,
+            ignore_regexes=ignore_regexes,
+            ignore_directories=ignore_directories,
+            case_sensitive=case_sensitive,
+        )
         self.callback = callback
         self.active = True
 
@@ -35,18 +40,26 @@ class LoggerHandler(RegexMatchingEventHandler):
     def __init__(
         self,
         logger,
-        patterns=None,
-        ignore_patterns=None,
+        regexes=None,
+        ignore_regexes=None,
         ignore_directories=False,
         case_sensitive=False,
     ):
-        super().__init__(patterns, ignore_patterns, ignore_directories, case_sensitive)
+        super().__init__(
+            regexes=regexes,
+            ignore_regexes=ignore_regexes,
+            ignore_directories=ignore_directories,
+            case_sensitive=case_sensitive,
+        )
         self.logger = logger
 
     def on_any_event(self, event):
         # what = "directory" if event.is_directory else "file"
-        if not event.is_directory :
-            self.logger.info("Changes %s: %s", event.src_path)
+        if not event.is_directory:
+            try:
+                self.logger.info("Changes %s", event.src_path)
+            except:
+                pass
 
 
 class Watcher:
@@ -59,7 +72,8 @@ class Watcher:
     def __init__(
         self,
         path,
-        patterns=[".*.py"],
+        regexes=[".*.py"],
+        ignore_regexes=[],
         command="echo 'No command specified'",
         shell=False,
         logger: logging.Logger = None,
@@ -68,9 +82,19 @@ class Watcher:
         self.command = command
         self.shell = shell
         self.logger = logger
-        self.extensions = patterns
-        self.reloader = Reloader(self.reload, patterns, ignore_directories=True)
-        self.logger_handler = LoggerHandler(self.logger, self.extensions)
+        self.extensions = regexes
+        self.reloader = Reloader(
+            self.reload,
+            regexes,
+            ignore_regexes=ignore_regexes,
+            ignore_directories=True,
+        )
+        self.logger_handler = LoggerHandler(
+            self.logger,
+            self.extensions,
+            ignore_regexes=ignore_regexes,
+            ignore_directories=True,
+        )
         self._reloading = False
 
     def log(self, message, level=logging.DEBUG):

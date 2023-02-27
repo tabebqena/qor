@@ -28,4 +28,3 @@ def test_router_init4():
 def test_router_init5():
     r = Router(path_conveters={"any": ".*"})
     assert r._path_converters["any"]
-

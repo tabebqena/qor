@@ -56,13 +56,13 @@ def test_router_add_route():
     assert r.routes[2].methods == ["post"]
 
 
-
 def test_router_route_decorator():
     r = Router()
+
     @r.route("/", name="_")
     def _():
         ...
-    
+
     r.build_routes()
     assert r.routes
     assert len(r.routes) == 1
@@ -144,5 +144,3 @@ def test_unallowed_method():
             params={"p": ".*"},
             auth_name=None,
         )
-
-

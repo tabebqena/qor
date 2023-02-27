@@ -2,8 +2,18 @@ import functools
 import socket
 import traceback
 from inspect import isclass
-from typing import (TYPE_CHECKING, Any, Callable, Dict, Iterable, List,
-                    Literal, Optional, Tuple, Union)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import qor.constants as constants
 from qor.config import BaseConfig
@@ -32,39 +42,48 @@ class default_handler_wrapper:
         self.func = func
         self.app: "Qor" = app
         self.kwargs = kwargs
-    
+
     def __run_before_request(self, context, app, *args, **kwargs):
         before_request_callbacks = app._before_request_callbacks
         for cb in before_request_callbacks:
             rv = cb(context, *args, **kwargs)
             if rv is not None:
                 return rv
-    
-    def __run_after_request(self, context:"Context", app, *args, **kwargs):
+
+    def __run_after_request(self, context: "Context", app, *args, **kwargs):
         after_request_callbacks = app._after_request_callbacks
         for cb in after_request_callbacks:
             context.return_value = cb(context, *args, **kwargs)
-    
-    def __run_error_callbacks(self, context:"Context", app:"Qor", status_or_exc:Union[int, Exception], *args, **kwargs):
+
+    def __run_error_callbacks(
+        self,
+        context: "Context",
+        app: "Qor",
+        status_or_exc: Union[int, Exception],
+        *args,
+        **kwargs,
+    ):
         _error_handlers = app._error_handlers
         is_int = isinstance(status_or_exc, int)
         is_exc = isinstance(status_or_exc, Exception)
-        
+
         if is_int:
             for _status_or_exc, cb in _error_handlers:
-                if isinstance(_status_or_exc, int) and  _status_or_exc == status_or_exc:
+                if isinstance(_status_or_exc, int) and _status_or_exc == status_or_exc:
                     error_cb_rv = cb(context, *args, **kwargs)
                     if error_cb_rv is not None:
                         context.return_value = error_cb_rv
                         return
         elif is_exc:
             for _status_or_exc, cb in _error_handlers:
-                if isclass(_status_or_exc) and issubclass(status_or_exc , _status_or_exc):
+                if isclass(_status_or_exc) and issubclass(
+                    status_or_exc, _status_or_exc
+                ):
                     error_cb_rv = cb(context, *args, **kwargs)
-                    if error_cb_rv  is not None:
+                    if error_cb_rv is not None:
                         context.return_value = error_cb_rv
                         return
-    
+
     def send_response(self, context: "Context", *args, **kwargs):
         status, data = parse_return_value(context.return_value)
         context.request.response(status, data)
@@ -75,41 +94,41 @@ class default_handler_wrapper:
         context = app.make_context(request, app.request_class)
         try:
             rv = self.__run_before_request(context, app, *args, **kwargs)
-            if rv  is not None :
-                context.return_value = rv   
+            if rv is not None:
+                context.return_value = rv
                 self.__run_after_request(context, app, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
-            
+
             # call the handler function
             rv = self.func(context, *args, **kwargs)
             # quick update context by the rv
-            context.return_value = rv            
+            context.return_value = rv
             # try to parse the return value
             status, data = parse_return_value(rv)
             # update context
             context.response_status = status
             context.response_data = data
-            
+
             if status == 200:
                 # run th eafter_request callbacks if there is no error
                 self.__run_after_request(context, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
-                
+
             else:
                 self.__run_error_callbacks(context, app, status, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
-                return              
-            
+                return
+
         except Exception as e:
             self.__run_error_callbacks(context, app, e, *args, **kwargs)
             if context.return_value:
                 self.send_response(context, *args, **kwargs)
-            
+
             else:
                 raise
- 
+
 
 class simple_wrapper:
     def __init__(self, func, app, **kwargs) -> None:

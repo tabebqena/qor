@@ -19,7 +19,7 @@ __all__ = [
     "to_bytes",
     "to_string",
     "Router",
-    "Context"
+    "Context",
 ]
 from qor import constants
 from qor.app import BaseApp, Qor
