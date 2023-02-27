@@ -93,7 +93,14 @@ class BaseApp:
         Returns
             Nothing
         """
-        self.kore.server(name, ip=ip, port=port, path=path, tls=tls)
+        try:
+            self.kore.server(name, ip=ip, port=port, path=path, tls=tls)
+        except RuntimeError as e:
+            print("Can't craete server")
+            traceback.print_exc()
+            print("shutdown to prevent further errors, `Qor`")
+            self.kore.shutdown()
+            print("\n")
 
     def domain(
         self,
