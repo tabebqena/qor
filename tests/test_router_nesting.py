@@ -1,5 +1,3 @@
-import pprint
-
 from qor.router import Route, Router
 
 

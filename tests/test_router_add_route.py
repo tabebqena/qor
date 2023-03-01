@@ -1,4 +1,3 @@
-import pprint
 import pytest
 
 from qor.router import Route, Router
