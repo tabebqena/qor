@@ -378,9 +378,7 @@ class Router(RouterBase):
                     "There is already registered handeler for the same domain"
                     f" path, {domain}:{path}"
                 )
-        # path = (
-        #     path.replace("/", "", 1) if path.startswith("/") and len(path) > 1 else path
-        # )
+
         for method in methods:
             self._raw_routes.append(
                 dict(

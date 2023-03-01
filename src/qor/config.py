@@ -90,7 +90,7 @@ class BaseConfig(dict):
         "default_server_ip": "127.0.0.1",
         "default_server_port": "8888",
         "default_server_tls": False,
-        "default_domain_name": "*",
+        "default_domain_name": None,
         "debug": True,
         # absolute import path for the config module
         "config_module": None,
