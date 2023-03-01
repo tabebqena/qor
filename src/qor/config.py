@@ -1,4 +1,5 @@
 import os
+import warnings
 from importlib import import_module
 
 from qor.utils import import_object_by_path
@@ -75,7 +76,7 @@ class BaseConfig(dict):
         # 	If set to "yes" will display HTML based HTTP error codes. Defaults to "no".
         "http_pretty_error": "no",
         #  # Set the logfile to which Kore will write all worker output.
-        "logfile": "log",
+        "logfile": None,
         # 	The deployment type of the application. Either "production", "development" or "docker". The production
         #  setting will cause Kore to chroot and drop privileges and run in the background. The development setting will
         #  run Kore in the foreground and only chdir into the root setting. The docker setting will cause Kore to run in
@@ -191,3 +192,17 @@ class BaseConfig(dict):
         for key, val in default_is_wrong.items():
             if self.get(key, None) == val:
                 del self[key]
+    
+    def add_server(self, name: str, ip: str, port: str, tls):
+        if self.get("servers", {}).get(name, {}):
+            warnings.warn(
+                "There is already registered server with the same name."
+            )
+            return
+        servers = self.get("servers", {})
+        servers[name] = {
+            "ip": ip ,
+            "port": port,
+            "tls": tls,
+        }
+        self["servers"] = servers
