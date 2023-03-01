@@ -1,19 +1,5 @@
-import functools
-import socket
-import traceback
 from inspect import isclass
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Literal,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
 
 import qor.constants as constants
 from qor.config import BaseConfig
@@ -43,16 +29,16 @@ class default_handler_wrapper:
         self.app: "Qor" = app
         self.kwargs = kwargs
 
-    def __run_before_request(self, context, app, *args, **kwargs):
-        before_request_callbacks = app._before_request_callbacks
-        for cb in before_request_callbacks:
+    def __run_before_handler(self, context, app, *args, **kwargs):
+        before_handler_callbacks = app._before_handler_callbacks
+        for cb in before_handler_callbacks:
             rv = cb(context, *args, **kwargs)
             if rv is not None:
                 return rv
 
-    def __run_after_request(self, context: "Context", app, *args, **kwargs):
-        after_request_callbacks = app._after_request_callbacks
-        for cb in after_request_callbacks:
+    def __run_after_handler(self, context: "Context", app, *args, **kwargs):
+        after_handler_callbacks = app._after_handler_callbacks
+        for cb in after_handler_callbacks:
             context.return_value = cb(context, *args, **kwargs)
 
     def __run_error_callbacks(
@@ -93,10 +79,10 @@ class default_handler_wrapper:
 
         context = app.make_context(request, app.request_class)
         try:
-            rv = self.__run_before_request(context, app, *args, **kwargs)
+            rv = self.__run_before_handler(context, app, *args, **kwargs)
             if rv is not None:
                 context.return_value = rv
-                self.__run_after_request(context, app, *args, **kwargs)
+                self.__run_after_handler(context, app, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
 
@@ -111,8 +97,8 @@ class default_handler_wrapper:
             context.response_data = data
 
             if status == 200:
-                # run th eafter_request callbacks if there is no error
-                self.__run_after_request(context, *args, **kwargs)
+                # run th eafter_handler callbacks if there is no error
+                self.__run_after_handler(context, app, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
 

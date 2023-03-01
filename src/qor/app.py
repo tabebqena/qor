@@ -1,25 +1,20 @@
 import functools
 import socket
 import traceback
-from inspect import isclass
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    List,
-    Literal,
-    Optional,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Callable, Dict, Iterable, Literal, Optional
+
+import click
 
 import qor.constants as constants
 from qor.config import BaseConfig
 from qor.router import Route, Router
 from qor.utils import parse_return_value
-from qor.wrappers import Context, Request, default_handler_wrapper, simple_wrapper
+from qor.wrappers import (
+    Context,
+    Request,
+    default_handler_wrapper,
+    simple_wrapper,
+)
 
 if TYPE_CHECKING:
     from qor.templates import BaseTemplateAdapter, KoreDomain
@@ -66,7 +61,6 @@ class BaseApp:
 
     def pre_configure(self):
         """"""
-        pass
 
     def setup(self):
         pass
@@ -78,7 +72,9 @@ class BaseApp:
         """proxy for the kore.config method, this name is to avoid conflict withh possible subclass instance `config` property"""
         return self.kore.config
 
-    def server(self, name, ip: str, port: str, path: str, tls: bool = False) -> None:
+    def server(
+        self, name, ip: str, port: str, path: str, tls: bool = False
+    ) -> None:
         """Setup a new server with the given name.
 
         The ip and path keywords are mutually exclusive.
@@ -96,7 +92,7 @@ class BaseApp:
         try:
             self.kore.server(name, ip=ip, port=port, path=path, tls=tls)
         except RuntimeError as e:
-            print("Can't craete server")
+            print("Can't create server")
             traceback.print_exc()
             print("shutdown to prevent further errors, `Qor`")
             self.kore.shutdown()
@@ -195,8 +191,11 @@ class BaseApp:
         src	The source kore.connection object.
         op	The websocket op type.
         data	The data to be broadcasted.
-        scope	Whether or not this is broadcasted to all workers or just this one."""
-        self.kore.websocket_broadcast(c, op, data, self.kore.WEBSOCKET_BROADCAST_GLOBAL)
+        scope	Whether or not this is broadcasted to all workers or just this one.
+        """
+        self.kore.websocket_broadcast(
+            c, op, data, self.kore.WEBSOCKET_BROADCAST_GLOBAL
+        )
 
     def worker(self) -> int:
         """Returns the worker ID the code is currently running under."""
@@ -217,7 +216,9 @@ class BaseApp:
         """
         self.kore.corotrace(enabled)
 
-    def privsep(self, name: str, root: str = "/var/chroot/kore", runas: str = "_kore"):
+    def privsep(
+        self, name: str, root: str = "/var/chroot/kore", runas: str = "_kore"
+    ):
         """Configuration privilege separation for Kore processes.
 
         This allows you to set the root directory of each process and what user it will run as.
@@ -253,8 +254,8 @@ class Qor(BaseApp):
         self._auths = {}
         self._post_configure_callbacks = []
         self._pre_configure_callbacks = []
-        self._before_request_callbacks = []
-        self._after_request_callbacks = []
+        self._before_handler_callbacks = []
+        self._after_handler_callbacks = []
         self._error_handlers = []
         self._setup_finished = False
         self.template_adapter: Optional[BaseTemplateAdapter] = None
@@ -263,8 +264,8 @@ class Qor(BaseApp):
         self.callbacks_map = {
             "post_config": self._post_configure_callbacks,
             "pre_config": self._pre_configure_callbacks,
-            "before_request": self._before_request_callbacks,
-            "after_request": self._after_request_callbacks,
+            "before_handler": self._before_handler_callbacks,
+            "after_handler": self._after_handler_callbacks,
             "error_handler": self._error_handlers,
         }
 
@@ -274,8 +275,6 @@ class Qor(BaseApp):
         Basically this method will check if `kore` package available or not.
         If `kore` is available, the `init_app` will be called. So, put all of your configurations in that method.
         """
-        for cb in self._pre_configure_callbacks:
-            cb(self)
         super().configure(args)
         self._root_app = True
         if "print-routes-exit" in args:
@@ -287,6 +286,10 @@ class Qor(BaseApp):
             print("\n")
             self.kore.shutdown()
 
+    def _pre_configure(self):
+        for cb in self._pre_configure_callbacks:
+            cb(self)
+
     def setup(self):
         """First call of this method is invoked by `configure` which should be called by the `kore` server.
         This method will:
@@ -296,19 +299,22 @@ class Qor(BaseApp):
         - register the routes defined in the `routes`.
         extend it to add more functionalities.
         """
-        self._set_as_development()
+        if self.config.is_development:
+            self._apply_dev_patches()
         for key, value in self.config.items():
             if key in self.config_keys:
                 setattr(self.kore.config, key, value)
 
         for server_name, server_data in self.config.get("servers", {}).items():
             self.server(server_name, **server_data)
-            print(f"{server_name} {server_data.get('ip')}:{server_data.get('port')}")
-
+            print(
+                f"{server_name} {server_data.get('ip')}:{server_data.get('port')}"
+            )
+        default_domain_name = self.config.get("default_domain_name", None)
         for domain_name, domain_data in self.config.get("domains", {}).items():
             domain = self.domain(domain_name, **domain_data)
             self._domains[domain_name] = domain
-            if not self._default_domain:
+            if default_domain_name == domain_name:
                 self._default_domain = domain
 
     def post_configure(self):
@@ -322,49 +328,47 @@ class Qor(BaseApp):
         def wrapper(self, *args, **kwargs):
             if self._setup_finished:
                 raise Exception(
-                    f"can't call method {func} after finishing the application setup."
+                    f"can't call method {func} after finishing the application"
+                    " setup."
                 )
             return func(self, *args, **kwargs)
 
         return wrapper
 
     @_setup_method
-    def _set_as_development(self):
-        if self.config.is_development:
-            self.tracer(dev_tracer)
-            if self.config.get("logfile"):
-                del self.config["logfile"]
-            if not self.config.get("servers", {}):
-                name = self.config.get("default_server_name", "default")
-                ip = self.config.get("default_server_ip", "127.0.0.1")
-                port = self.config.get("default_server_port", "8888")
-                tls = self.config.get("default_server_tls", False)
-                self.server(
-                    name=name,
-                    ip=ip,
-                    port=port,
-                    path=None,
-                    tls=tls,
-                )
-                print(
-                    f"Development Server: {name} {ip}:{port} added!, make sure you add your own in production"
-                )
+    def _apply_dev_patches(self):
+        self.tracer(dev_tracer)
+        if not self.config.get("servers", {}):
+            name = self.config.get("default_server_name", "default")
+            ip = self.config.get("default_server_ip", "127.0.0.1")
+            port = self.config.get("default_server_port", "8888")
+            tls = self.config.get("default_server_tls", False)
+            self.config.add_server(name, ip, port, tls)
+            click.secho(
+                (
+                    f"Development Server: {name} {ip}:{port} added!, make"
+                    " sure you add your own in production"
+                ),
+                fg="blue",
+            )
 
-            if not self.config.get("domains", {}):
-                name = self.config.get("default_domain_name", "*")
-                domain = self.domain(
-                    name,
-                    self.config.get("default_server_name", "default"),
-                )
-                self._domains[name] = domain
-                self._default_domain = domain
-                print(
-                    f"Development Domain: {name} added!, , make sure you add your own in production"
-                )
-            if not self.config.get("disable_auto_run", False):
-                self.callback(
-                    "post_config",
-                )(self.start)
+        if not self.config.get("domains", {}):
+            name = self.config.get("default_domain_name", "*")
+
+            self.config.add_domain(
+                name, server=self.config["servers"].keys()[0]
+            )
+            click.secho(
+                (
+                    f"Development Domain: {name} added!, make sure you add your"
+                    " own in production"
+                ),
+                fg="green",
+            )
+        if not self.config.get("disable_auto_run", False):
+            self.callback(
+                "post_config",
+            )(self.start)
 
     @_setup_method
     def auth(
@@ -442,20 +446,11 @@ class Qor(BaseApp):
     def start(self, *args):
         # self.__register_prerequest()
 
-        self._before_request_callbacks = tuple(self._before_request_callbacks)
-        self._after_request_callbacks = tuple(reversed(self._after_request_callbacks))
+        self._before_handler_callbacks = tuple(self._before_handler_callbacks)
+        self._after_handler_callbacks = tuple(
+            reversed(self._after_handler_callbacks)
+        )
         self.__register_routes()
-
-    # def __register_prerequest(self):
-    #     def _wrap(cb):
-    #         @functools.wraps(cb)
-    #         def wrapped(req, *args, **kwargs):
-    #             context = self.make_context(req, self.request_class)
-    #             cb(context, *args, **kwargs)
-    #         return wrapped
-
-    #     for cb in self._before_request_callbacks:
-    #         self.kore.prerequest(cb)
 
     def make_context(self, kore_request, request_class):
         return Context(app=self, request=request_class(kore_request, self))
@@ -482,14 +477,17 @@ class Qor(BaseApp):
                 route_domain = self._domains.get(route_domain_name, None)
                 if not route_domain:
                     raise Exception(
-                        f"No domain found with name {route_domain_name} for route {route}"
+                        f"No domain found with name {route_domain_name} for"
+                        f" route {route}"
                     )
                 del route["domain"]
                 self.__register_route(route_domain, route)
             else:
                 if not _default_domain:
                     raise Exception(
-                        f"No domain could be detected for the route {route}.\n- The route doesn't specify one \n- And, the default domain is None."
+                        f"No domain could be detected for the route {route}.\n-"
+                        " The route doesn't specify one \n- And, the default"
+                        " domain is None."
                     )
                 self.__register_route(_default_domain, route)
         self._setup_finished = True
@@ -547,7 +545,14 @@ class Qor(BaseApp):
     ):
         def wrapper(func):
             self.add_route(
-                path, func, name, methods, params, auth_name, key=key, domain=domain
+                path,
+                func,
+                name,
+                methods,
+                params,
+                auth_name,
+                key=key,
+                domain=domain,
             )
 
         return wrapper
@@ -555,6 +560,7 @@ class Qor(BaseApp):
     def get(
         self,
         path: str,
+        name="",
         key=None,
         params={},
         auth_name=None,
@@ -562,7 +568,14 @@ class Qor(BaseApp):
     ):
         def wrapper(func):
             self.add_route(
-                path, func, ["get"], params, auth_name, key=key, domain=domain
+                path=path,
+                handler=func,
+                name=name,
+                methods=["get"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
             )
 
         return wrapper
@@ -570,6 +583,7 @@ class Qor(BaseApp):
     def post(
         self,
         path: str,
+        name="",
         key=None,
         params={},
         auth_name=None,
@@ -577,7 +591,14 @@ class Qor(BaseApp):
     ):
         def wrapper(func):
             self.add_route(
-                path, func, ["post"], params, auth_name, key=key, domain=domain
+                path=path,
+                handler=func,
+                name=name,
+                methods=["post"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
             )
 
         return wrapper
@@ -585,6 +606,7 @@ class Qor(BaseApp):
     def put(
         self,
         path: str,
+        name="",
         key=None,
         params={},
         auth_name=None,
@@ -592,7 +614,14 @@ class Qor(BaseApp):
     ):
         def wrapper(func):
             self.add_route(
-                path, func, ["put"], params, auth_name, key=key, domain=domain
+                path=path,
+                handler=func,
+                name=name,
+                methods=["put"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
             )
 
         return wrapper
@@ -600,6 +629,7 @@ class Qor(BaseApp):
     def patch(
         self,
         path: str,
+        name="",
         key=None,
         params={},
         auth_name=None,
@@ -607,7 +637,14 @@ class Qor(BaseApp):
     ):
         def wrapper(func):
             self.add_route(
-                path, func, ["patch"], params, auth_name, key=key, domain=domain
+                path=path,
+                handler=func,
+                name=name,
+                methods=["patch"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
             )
 
         return wrapper
@@ -615,6 +652,7 @@ class Qor(BaseApp):
     def delete(
         self,
         path: str,
+        name="",
         key=None,
         params={},
         auth_name=None,
@@ -622,7 +660,14 @@ class Qor(BaseApp):
     ):
         def wrapper(func):
             self.add_route(
-                path, func, ["delete"], params, auth_name, key=key, domain=domain
+                path=path,
+                handler=func,
+                name=name,
+                methods=["delete"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
             )
 
         return wrapper
@@ -638,7 +683,8 @@ class Qor(BaseApp):
             callbacks = self.callbacks_map.get(type, None)
             if callbacks is None:
                 raise Exception(
-                    f"No callback list for this type: {type}, avaialable: {', '.join(self.callbacks_map.keys())}"
+                    f"No callback list for this type: {type}, avaialable:"
+                    f" {', '.join(self.callbacks_map.keys())}"
                 )
             if kwargs:
                 callbacks.append({"func": func, "kwargs": kwargs})
@@ -648,13 +694,13 @@ class Qor(BaseApp):
 
         return wrapper
 
-    def before_request(self, func):
-        self.callback("before_request")(func)
+    def before_handler(self, func):
+        self.callback("before_handler")(func)
         return func
 
-    def after_request(self):
+    def after_handler(self):
         def wrapper(func):
-            self.callback("after_request")(func)
+            self.callback("after_handler")(func)
             return func
 
         return wrapper

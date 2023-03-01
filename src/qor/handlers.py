@@ -1,4 +1,3 @@
-import typing
 from typing import Any, Type
 
 from qor.utils import int_to_method_name, parse_return_value
@@ -61,7 +60,7 @@ class HandlerMixin:
         """Override this to run something after sending the response"""
         ...
 
-    def before_request(self, req):
+    def before_handler(self, req):
         """run before handling the request
         its return value not implemented yet"""
         ...
@@ -73,7 +72,7 @@ class HandlerMixin:
     def as_view(cls: "Type[HandlerMixin]", name, *cls_args, **cls_kwargs):
         def view(request: Request):
             instance = cls(*cls_args, **cls_kwargs)
-            instance.before_request(request)
+            instance.before_handler(request)
             rv = instance.dispatch_request(request)
             instance.after_response(request, rv)
             return rv
