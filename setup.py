@@ -1,4 +1,4 @@
-from distutils.core import Extension, setup
+from distutils.core import setup
 
 setup(
     name="qor",

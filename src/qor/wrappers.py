@@ -2,13 +2,10 @@ from inspect import isclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
 
 import qor.constants as constants
-from qor.config import BaseConfig
-from qor.router import Route, Router
 from qor.utils import parse_return_value
 
 if TYPE_CHECKING:
     from qor.app import BaseApp, Qor
-    from qor.templates import BaseTemplateAdapter
 
 
 class default_handler_wrapper:
@@ -24,25 +21,41 @@ class default_handler_wrapper:
     - Tuple[int, list]
     """
 
-    def __init__(self, func, app, **kwargs) -> None:
+    def __init__(self, func, app, route, **kwargs) -> None:
         self.func = func
         self.app: "Qor" = app
+        self.route = route
         self.kwargs = kwargs
 
-    def __run_before_handler(self, context, app, *args, **kwargs):
+    def __run_before_handler(
+        self,
+        request: "Request",
+        context: "Context",
+        app: "Qor",
+        *args,
+        **kwargs,
+    ):
         before_handler_callbacks = app._before_handler_callbacks
         for cb in before_handler_callbacks:
-            rv = cb(context, *args, **kwargs)
+            rv = cb(request, context, *args, **kwargs)
             if rv is not None:
                 return rv
 
-    def __run_after_handler(self, context: "Context", app, *args, **kwargs):
+    def __run_after_handler(
+        self,
+        request: "Request",
+        context: "Context",
+        app: "Qor",
+        *args,
+        **kwargs,
+    ):
         after_handler_callbacks = app._after_handler_callbacks
         for cb in after_handler_callbacks:
-            context.return_value = cb(context, *args, **kwargs)
+            context.return_value = cb(request, context, *args, **kwargs)
 
     def __run_error_callbacks(
         self,
+        request: "Request",
         context: "Context",
         app: "Qor",
         status_or_exc: Union[int, Exception],
@@ -56,7 +69,7 @@ class default_handler_wrapper:
         if is_int:
             for _status_or_exc, cb in _error_handlers:
                 if isinstance(_status_or_exc, int) and _status_or_exc == status_or_exc:
-                    error_cb_rv = cb(context, *args, **kwargs)
+                    error_cb_rv = cb(context, request, *args, **kwargs)
                     if error_cb_rv is not None:
                         context.return_value = error_cb_rv
                         return
@@ -65,7 +78,7 @@ class default_handler_wrapper:
                 if isclass(_status_or_exc) and issubclass(
                     status_or_exc, _status_or_exc
                 ):
-                    error_cb_rv = cb(context, *args, **kwargs)
+                    error_cb_rv = cb(context, request, *args, **kwargs)
                     if error_cb_rv is not None:
                         context.return_value = error_cb_rv
                         return
@@ -74,20 +87,21 @@ class default_handler_wrapper:
         status, data = parse_return_value(context.return_value)
         context.request.response(status, data)
 
-    def __call__(self, request, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, kore_request, *args: Any, **kwargs: Any) -> Any:
         app = self.app
+        qor_request = app.wrap_request(kore_request)
 
-        context = app.make_context(request, app.request_class)
+        context = app.make_context(qor_request, route=self.route)
         try:
-            rv = self.__run_before_handler(context, app, *args, **kwargs)
+            rv = self.__run_before_handler(qor_request, context, app, *args, **kwargs)
             if rv is not None:
                 context.return_value = rv
-                self.__run_after_handler(context, app, *args, **kwargs)
+                self.__run_after_handler(qor_request, context, app, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
 
             # call the handler function
-            rv = self.func(context, *args, **kwargs)
+            rv = self.func(qor_request, context, *args, **kwargs)
             # quick update context by the rv
             context.return_value = rv
             # try to parse the return value
@@ -98,20 +112,21 @@ class default_handler_wrapper:
 
             if status == 200:
                 # run th eafter_handler callbacks if there is no error
-                self.__run_after_handler(context, app, *args, **kwargs)
+                self.__run_after_handler(qor_request, context, app, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
 
             else:
-                self.__run_error_callbacks(context, app, status, *args, **kwargs)
+                self.__run_error_callbacks(
+                    qor_request, context, app, status, *args, **kwargs
+                )
                 self.send_response(context, *args, **kwargs)
                 return
 
         except Exception as e:
-            self.__run_error_callbacks(context, app, e, *args, **kwargs)
+            self.__run_error_callbacks(qor_request, context, app, e, *args, **kwargs)
             if context.return_value:
                 self.send_response(context, *args, **kwargs)
-
             else:
                 raise
 
@@ -549,10 +564,11 @@ class KoreDomain:
 
 
 class Context:
-    def __init__(self, app: "Qor", request: "Request") -> None:
+    def __init__(self, app: "Qor", request: "Request", **kwargs) -> None:
         self.app = app
         self.request = request
         self.g = {}
         self.response_status = None
         self.response_data = None
         self.return_value = None
+        self.kwargs = kwargs

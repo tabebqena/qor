@@ -5,7 +5,7 @@ except:
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from qor import Qor, Request
+    from qor import Qor
 
 
 class BaseTemplateAdapter:

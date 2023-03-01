@@ -1,4 +1,4 @@
-from qor.router import Route, Router
+from qor.router import Router
 
 
 def test_build_routes_nesting():

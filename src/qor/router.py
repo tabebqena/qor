@@ -1,7 +1,6 @@
 import copy
 import re
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
-from urllib.parse import urljoin
+from typing import Callable, Dict, List, Literal, Optional
 
 from qor import constants
 
@@ -78,8 +77,8 @@ def analyze_part(string, path_converters: dict):
     elif len(splitted) == 3:
         if splitted[1] != "re":
             raise Exception(
-                f"the path part {string} has many `:` characters and couldn't be"
-                " analyzed."
+                f"the path part {string} has many `:` characters and couldn't"
+                " be analyzed."
             )
         else:
             _filter_name = "re"
@@ -142,15 +141,19 @@ def build_path(
     return built
 
 
-def kore_re_string(parts, sep="\/"):
+def kore_re_string(parts, sep="\/", is_root=True, catch_child=False):
     rv = []
     for part in parts:
         if part.get("isreg", True):
             rv.append(f"({part.get('re')})")
         else:
             rv.append(part.get("value"))
-
-    return sep.join(rv)
+    string = sep.join(rv)
+    if is_root:
+        string = f"^{string}"
+    if not catch_child:
+        string = f"{string}$"
+    return string
 
 
 def python_re_string(parts, sep="\/"):
@@ -460,8 +463,6 @@ class Router(RouterBase):
         rv.extend(self.__join_nested_routes(base_names + [self.name], base_paths))
         return rv
 
-    # names = all parent names
-    # paths = all parent paths
     def build_routes(self, base_name="", base_path="/"):
         self._routes = []
         _routes = self.__join_all([], [base_path])

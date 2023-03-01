@@ -2,8 +2,6 @@ import os
 import warnings
 from importlib import import_module
 
-from qor.utils import import_object_by_path
-
 
 class BaseConfig(dict):
     config_from_environ = False
@@ -148,9 +146,7 @@ class BaseConfig(dict):
             try:
                 imported_config_module = import_module(config_module)
                 configure_name = self.get("config_configure", "configure")
-                configure = getattr(
-                    imported_config_module, configure_name, None
-                )
+                configure = getattr(imported_config_module, configure_name, None)
                 config_name = self.get("config_config", "config_config")
                 _config = getattr(imported_config_module, config_name, None)
 
@@ -165,9 +161,7 @@ class BaseConfig(dict):
                     )
 
             except ImportError as e:
-                raise ImportError(
-                    f"can't import config module {config_module}"
-                ) from e
+                raise ImportError(f"can't import config module {config_module}") from e
 
         super().__init__(kwargs)
 
@@ -188,12 +182,8 @@ class BaseConfig(dict):
         if self.get("root_path", None) and dict.get(self, "logfile", None):
             self["logfile"] = os.path.join(root_path, self["logfile"])
         if self.get("root_path", None) and self.get("dev_log_dir", None):
-            self["dev_log_dir"] = os.path.join(
-                root_path, self.get("dev_log_dir", None)
-            )
-        if not self.get("http_body_disk_path") and self.get(
-            "http_body_disk_offload"
-        ):
+            self["dev_log_dir"] = os.path.join(root_path, self.get("dev_log_dir", None))
+        if not self.get("http_body_disk_path") and self.get("http_body_disk_offload"):
             temp_path = os.path.join(self.get("root_path"), "tmp")
             self["http_body_disk_path"] = temp_path
 
@@ -201,21 +191,21 @@ class BaseConfig(dict):
         default_is_wrong = {
             "tls_dhparam": self.kore_defaults.get("tls_dhparam"),
             "http_media_type": self.kore_defaults.get("http_media_type"),
+            "logfile": self.kore_defaults.get("logfile"),
         }
         for key, val in default_is_wrong.items():
             if self.get(key, None) == val:
                 del self[key]
 
-    def add_server(self, name: str, ip: str, port: str, tls):
+    def add_server(self, name: str, ip: str, port: str, path=None, tls=False):
         if self.get("servers", {}).get(name, {}):
-            warnings.warn(
-                "There is already registered server with the same name."
-            )
+            warnings.warn("There is already registered server with the same name.")
             return
         servers = self.get("servers", {})
         servers[name] = {
             "ip": ip,
             "port": port,
+            "path": path,
             "tls": tls,
         }
         self["servers"] = servers
@@ -231,9 +221,7 @@ class BaseConfig(dict):
         verify_depth=1,
     ):
         if self.get("domains", {}).get(name, {}):
-            warnings.warn(
-                f"There is already registered domain with this name {name}"
-            )
+            warnings.warn(f"There is already registered domain with this name {name}")
             return
         domains = self.get("domains", {})
         domains[name] = dict(

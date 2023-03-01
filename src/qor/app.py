@@ -8,7 +8,6 @@ import click
 import qor.constants as constants
 from qor.config import BaseConfig
 from qor.router import Route, Router
-from qor.utils import parse_return_value
 from qor.wrappers import (
     Context,
     Request,
@@ -72,9 +71,7 @@ class BaseApp:
         """proxy for the kore.config method, this name is to avoid conflict withh possible subclass instance `config` property"""
         return self.kore.config
 
-    def server(
-        self, name, ip: str, port: str, path: str, tls: bool = False
-    ) -> None:
+    def server(self, name, ip: str, port: str, path: str, tls: bool = False) -> None:
         """Setup a new server with the given name.
 
         The ip and path keywords are mutually exclusive.
@@ -102,7 +99,7 @@ class BaseApp:
         self,
         host: str,
         attach: str,
-        keystr: str = None,
+        key: str = None,
         cert: str = None,
         acme: bool = None,
         client_verify: str = None,
@@ -130,7 +127,7 @@ class BaseApp:
             host,
             attach=attach,
             cert=cert,
-            key=keystr,
+            key=key,
             acme=acme,
             client_verify=client_verify,
             verify_depth=verify_depth,
@@ -193,9 +190,7 @@ class BaseApp:
         data	The data to be broadcasted.
         scope	Whether or not this is broadcasted to all workers or just this one.
         """
-        self.kore.websocket_broadcast(
-            c, op, data, self.kore.WEBSOCKET_BROADCAST_GLOBAL
-        )
+        self.kore.websocket_broadcast(c, op, data, self.kore.WEBSOCKET_BROADCAST_GLOBAL)
 
     def worker(self) -> int:
         """Returns the worker ID the code is currently running under."""
@@ -216,9 +211,7 @@ class BaseApp:
         """
         self.kore.corotrace(enabled)
 
-    def privsep(
-        self, name: str, root: str = "/var/chroot/kore", runas: str = "_kore"
-    ):
+    def privsep(self, name: str, root: str = "/var/chroot/kore", runas: str = "_kore"):
         """Configuration privilege separation for Kore processes.
 
         This allows you to set the root directory of each process and what user it will run as.
@@ -307,9 +300,7 @@ class Qor(BaseApp):
 
         for server_name, server_data in self.config.get("servers", {}).items():
             self.server(server_name, **server_data)
-            print(
-                f"{server_name} {server_data.get('ip')}:{server_data.get('port')}"
-            )
+            print(f"{server_name} {server_data.get('ip')}:{server_data.get('port')}")
         default_domain_name = self.config.get("default_domain_name", None)
         for domain_name, domain_data in self.config.get("domains", {}).items():
             domain = self.domain(domain_name, **domain_data)
@@ -338,32 +329,29 @@ class Qor(BaseApp):
     @_setup_method
     def _apply_dev_patches(self):
         self.tracer(dev_tracer)
-        if not self.config.get("servers", {}):
-            name = self.config.get("default_server_name", "default")
+        if not self.config.get("servers", {}) and not self.config.get("domains", {}):
+            server_name = self.config.get("default_server_name", "default")
             ip = self.config.get("default_server_ip", "127.0.0.1")
             port = self.config.get("default_server_port", "8888")
             tls = self.config.get("default_server_tls", False)
-            self.config.add_server(name, ip, port, tls)
+            self.config.add_server(server_name, ip, port, tls)
             click.secho(
                 (
-                    f"Development Server: {name} {ip}:{port} added!, make"
-                    " sure you add your own in production"
+                    f"Development Server: {server_name} {ip}:{port} added!,"
+                    " make sure you add your own in production"
                 ),
                 fg="blue",
             )
 
-        if not self.config.get("domains", {}):
-            name = self.config.get("default_domain_name", "*")
+            doamin_name = self.config.get("default_domain_name", "*")
 
-            self.config.add_domain(
-                name, server=self.config["servers"].keys()[0]
-            )
+            self.config.add_domain(doamin_name, server=server_name)
             click.secho(
                 (
-                    f"Development Domain: {name} added!, make sure you add your"
-                    " own in production"
+                    f"Development Domain: {doamin_name} added!, make sure you"
+                    " add your own in production"
                 ),
-                fg="green",
+                fg="blue",
             )
         if not self.config.get("disable_auto_run", False):
             self.callback(
@@ -444,16 +432,15 @@ class Qor(BaseApp):
         )
 
     def start(self, *args):
-        # self.__register_prerequest()
-
         self._before_handler_callbacks = tuple(self._before_handler_callbacks)
-        self._after_handler_callbacks = tuple(
-            reversed(self._after_handler_callbacks)
-        )
+        self._after_handler_callbacks = tuple(reversed(self._after_handler_callbacks))
         self.__register_routes()
 
-    def make_context(self, kore_request, request_class):
-        return Context(app=self, request=request_class(kore_request, self))
+    def make_context(self, qor_request, **kwargs):
+        return Context(app=self, request=qor_request, **kwargs)
+
+    def wrap_request(self, kore_request, **kwargs):
+        return self.request_class(kore_request, self, **kwargs)
 
     def __register_routes(self):
         """
@@ -554,6 +541,7 @@ class Qor(BaseApp):
                 key=key,
                 domain=domain,
             )
+            return func
 
         return wrapper
 
@@ -577,6 +565,7 @@ class Qor(BaseApp):
                 key=key,
                 domain=domain,
             )
+            return func
 
         return wrapper
 
@@ -600,6 +589,7 @@ class Qor(BaseApp):
                 key=key,
                 domain=domain,
             )
+            return func
 
         return wrapper
 
@@ -623,6 +613,7 @@ class Qor(BaseApp):
                 key=key,
                 domain=domain,
             )
+            return func
 
         return wrapper
 
@@ -646,6 +637,7 @@ class Qor(BaseApp):
                 key=key,
                 domain=domain,
             )
+            return func
 
         return wrapper
 
@@ -669,6 +661,7 @@ class Qor(BaseApp):
                 key=key,
                 domain=domain,
             )
+            return func
 
         return wrapper
 

@@ -1,6 +1,4 @@
-import pytest
-
-from qor.router import Route, Router
+from qor.router import Router
 import re
 
 
