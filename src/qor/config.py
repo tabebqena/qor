@@ -106,6 +106,10 @@ class BaseConfig(dict):
         "config_from_environ": False,
         # keys listed in config_env_exclude_keys will't be loaded from the enviroment
         "config_env_exclude_keys": [],
+        # disable auto registeration of routes, effective only in `deployment=development`
+        # by default, in development mode, qor will auto register routes, this option will prevent this
+        # default is `false`
+        "disable_auto_run": False,
     }
 
     def __init__(self, **kwargs) -> None:
@@ -144,7 +148,9 @@ class BaseConfig(dict):
             try:
                 imported_config_module = import_module(config_module)
                 configure_name = self.get("config_configure", "configure")
-                configure = getattr(imported_config_module, configure_name, None)
+                configure = getattr(
+                    imported_config_module, configure_name, None
+                )
                 config_name = self.get("config_config", "config_config")
                 _config = getattr(imported_config_module, config_name, None)
 
@@ -154,11 +160,14 @@ class BaseConfig(dict):
                     self.update(_config)
                 if not configure and not _config:
                     raise Exception(
-                        f"The config module has no method named `{config_name}` nor member named `{config_name}`"
+                        f"The config module has no method named `{config_name}`"
+                        f" nor member named `{config_name}`"
                     )
 
             except ImportError as e:
-                raise ImportError(f"can't import config module {config_module}") from e
+                raise ImportError(
+                    f"can't import config module {config_module}"
+                ) from e
 
         super().__init__(kwargs)
 
@@ -179,8 +188,12 @@ class BaseConfig(dict):
         if self.get("root_path", None) and dict.get(self, "logfile", None):
             self["logfile"] = os.path.join(root_path, self["logfile"])
         if self.get("root_path", None) and self.get("dev_log_dir", None):
-            self["dev_log_dir"] = os.path.join(root_path, self.get("dev_log_dir", None))
-        if not self.get("http_body_disk_path") and self.get("http_body_disk_offload"):
+            self["dev_log_dir"] = os.path.join(
+                root_path, self.get("dev_log_dir", None)
+            )
+        if not self.get("http_body_disk_path") and self.get(
+            "http_body_disk_offload"
+        ):
             temp_path = os.path.join(self.get("root_path"), "tmp")
             self["http_body_disk_path"] = temp_path
 
@@ -192,7 +205,7 @@ class BaseConfig(dict):
         for key, val in default_is_wrong.items():
             if self.get(key, None) == val:
                 del self[key]
-    
+
     def add_server(self, name: str, ip: str, port: str, tls):
         if self.get("servers", {}).get(name, {}):
             warnings.warn(
@@ -201,8 +214,33 @@ class BaseConfig(dict):
             return
         servers = self.get("servers", {})
         servers[name] = {
-            "ip": ip ,
+            "ip": ip,
             "port": port,
             "tls": tls,
         }
         self["servers"] = servers
+
+    def add_domain(
+        self,
+        name: str,
+        server: str = None,
+        cert=None,
+        key=None,
+        acme=False,
+        client_verify=None,
+        verify_depth=1,
+    ):
+        if self.get("domains", {}).get(name, {}):
+            warnings.warn(
+                f"There is already registered domain with this name {name}"
+            )
+            return
+        domains = self.get("domains", {})
+        domains[name] = dict(
+            attach=server or self.get("default_server_name"),
+            cert=cert,
+            key=key,
+            acme=acme,
+            client_verify=client_verify,
+            verify_depth=verify_depth,
+        )

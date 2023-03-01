@@ -18,7 +18,14 @@ except:
     pass
 
 
-DEFAULT_IGNORE_REJEXES = [".*\.venv.*", ".*venv.*", ".*env.*", ".*\.env.*", ".*\.pyc", ".*pidfile"]
+DEFAULT_IGNORE_REJEXES = [
+    ".*\.venv.*",
+    ".*venv.*",
+    ".*env.*",
+    ".*\.env.*",
+    ".*\.pyc",
+    ".*pidfile",
+]
 
 
 def find_app():
@@ -53,7 +60,7 @@ def run(app, watch):
             "pass its path on the cmd:. `qor run src/app.py` "
             "if you did that, ensure that path exists.",
             err=True,
-            fg="red"
+            fg="red",
         )
         return
     app = os.path.abspath(app)
@@ -99,9 +106,7 @@ def run(app, watch):
 
             except RuntimeError:
                 process.kill()
-        click.secho(
-            f"Stopped by code: {str(process.poll())}", fg="yellow"
-        )
+        click.secho(f"Stopped by code: {str(process.poll())}", fg="yellow")
 
 
 @qor.command(name="routes", help="print registered routes for the ``Qor` app. ")
@@ -118,8 +123,9 @@ def routes(app):
         click.secho(
             "can't find app, please set `KORE_APP` env variable or"
             "pass its path on the cmd:. `qor run src/app.py` "
-            "if you did that, ensure that path exists."
-            ,err=True, fg="red"
+            "if you did that, ensure that path exists.",
+            err=True,
+            fg="red",
         )
 
     watch_path = os.path.dirname(app)
