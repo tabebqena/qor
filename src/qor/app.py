@@ -89,11 +89,10 @@ class BaseApp:
         try:
             self.kore.server(name, ip=ip, port=port, path=path, tls=tls)
         except RuntimeError as e:
-            print("Can't create server")
+            click.secho("Can't create server", fg="red")
             traceback.print_exc()
-            print("shutdown to prevent further errors, `Qor`")
+            click.secho("shutdown to prevent further errors, `Qor`", fg="red")
             self.kore.shutdown()
-            print("\n")
 
     def domain(
         self,
@@ -300,13 +299,20 @@ class Qor(BaseApp):
 
         for server_name, server_data in self.config.get("servers", {}).items():
             self.server(server_name, **server_data)
-            print(f"{server_name} {server_data.get('ip')}:{server_data.get('port')}")
-        default_domain_name = self.config.get("default_domain_name", None)
+            click.secho(
+                (f"{server_name} {server_data.get('ip')}:{server_data.get('port')}"),
+                fg="blue",
+            )
         for domain_name, domain_data in self.config.get("domains", {}).items():
             domain = self.domain(domain_name, **domain_data)
             self._domains[domain_name] = domain
-            if default_domain_name == domain_name:
-                self._default_domain = domain
+
+        default_domain_name = self.config.get("default_domain_name", None)
+
+        if default_domain_name:
+            self._default_domain = self._domains.get(default_domain_name)
+        else:
+            self._default_domain = list(self._domains.values())[0]
 
     def post_configure(self):
         for cb in self._post_configure_callbacks:
@@ -343,8 +349,7 @@ class Qor(BaseApp):
                 fg="blue",
             )
 
-            doamin_name = self.config.get("default_domain_name", "*")
-
+            doamin_name = self.config.get("default_domain_name") or "*"
             self.config.add_domain(doamin_name, server=server_name)
             click.secho(
                 (
@@ -458,6 +463,7 @@ class Qor(BaseApp):
         _default_domain = self._default_domain
         self.router.build_routes()
         _routes = self.router.routes
+
         for route in _routes:
             route_domain_name = route.get("domain", None)
             if route_domain_name:
@@ -491,13 +497,12 @@ class Qor(BaseApp):
         for your convinence, you can use `kore_lib.router.Route`
         """
         path = route.get("path")
-
         handler = self.handler_wrapper(route.get("handler"), self, route=route)
 
         params = {}
         if "params" in route:
             params = route.pop("params")
-        methods = route.get("methods", ["get"])
+        methods = route.methods  # methods is proprty not key
 
         auth = {}
 
@@ -507,7 +512,6 @@ class Qor(BaseApp):
             auth = self._auths.get(auth_name)
             if not auth:
                 auth = route.auth
-
         for method in methods:
             kwargs = {}
             key = route.get("key")
@@ -532,12 +536,12 @@ class Qor(BaseApp):
     ):
         def wrapper(func):
             self.add_route(
-                path,
-                func,
-                name,
-                methods,
-                params,
-                auth_name,
+                path=path,
+                handler=func,
+                name=name,
+                methods=methods,
+                params=params,
+                auth_name=auth_name,
                 key=key,
                 domain=domain,
             )
