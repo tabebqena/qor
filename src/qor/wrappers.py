@@ -1,8 +1,9 @@
+import json
 from inspect import isclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
 
 import qor.constants as constants
-from qor.utils import parse_return_value
+from qor.utils import cached_property, parse_return_value
 
 if TYPE_CHECKING:
     from qor.app import BaseApp, Qor
@@ -31,13 +32,12 @@ class default_handler_wrapper:
         self,
         request: "Request",
         context: "Context",
-        app: "Qor",
         *args,
         **kwargs,
     ):
-        before_handler_callbacks = app._before_handler_callbacks
+        before_handler_callbacks = self.app._before_handler_callbacks
         for cb in before_handler_callbacks:
-            rv = cb(request, context, *args, **kwargs)
+            rv = cb(request, *args, context=context, **kwargs)
             if rv is not None:
                 return rv
 
@@ -45,31 +45,29 @@ class default_handler_wrapper:
         self,
         request: "Request",
         context: "Context",
-        app: "Qor",
         *args,
         **kwargs,
     ):
-        after_handler_callbacks = app._after_handler_callbacks
+        after_handler_callbacks = self.app._after_handler_callbacks
         for cb in after_handler_callbacks:
-            context.return_value = cb(request, context, *args, **kwargs)
+            context.return_value = cb(request, *args, context=context, **kwargs)
 
     def __run_error_callbacks(
         self,
         request: "Request",
         context: "Context",
-        app: "Qor",
         status_or_exc: Union[int, Exception],
         *args,
         **kwargs,
     ):
-        _error_handlers = app._error_handlers
+        _error_handlers = self.app._error_handlers
         is_int = isinstance(status_or_exc, int)
         is_exc = isinstance(status_or_exc, Exception)
 
         if is_int:
             for _status_or_exc, cb in _error_handlers:
                 if isinstance(_status_or_exc, int) and _status_or_exc == status_or_exc:
-                    error_cb_rv = cb(context, request, *args, **kwargs)
+                    error_cb_rv = cb(request, *args, context=context, **kwargs)
                     if error_cb_rv is not None:
                         context.return_value = error_cb_rv
                         return
@@ -78,13 +76,19 @@ class default_handler_wrapper:
                 if isclass(_status_or_exc) and issubclass(
                     status_or_exc, _status_or_exc
                 ):
-                    error_cb_rv = cb(context, request, *args, **kwargs)
+                    error_cb_rv = cb(request, *args, context=context, **kwargs)
                     if error_cb_rv is not None:
                         context.return_value = error_cb_rv
                         return
 
     def send_response(self, context: "Context", *args, **kwargs):
         status, data = parse_return_value(context.return_value)
+        if not context.request.get_response_header("Content-Type"):
+            if type(data) in (dict, tuple, list):
+                context.request.response_header("Content-Type", "application/json")
+            else:
+                context.request.response_header("Content-Type", "text/html")
+
         context.request.response(status, data)
 
     def __call__(self, kore_request, *args: Any, **kwargs: Any) -> Any:
@@ -93,15 +97,14 @@ class default_handler_wrapper:
 
         context = app.make_context(qor_request, route=self.route)
         try:
-            rv = self.__run_before_handler(qor_request, context, app, *args, **kwargs)
+            rv = self.__run_before_handler(qor_request, context, *args, **kwargs)
             if rv is not None:
                 context.return_value = rv
-                self.__run_after_handler(qor_request, context, app, *args, **kwargs)
+                self.__run_after_handler(qor_request, context, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
-
             # call the handler function
-            rv = self.func(qor_request, context, *args, **kwargs)
+            rv = self.func(qor_request, *args, context=context, **kwargs)
             # quick update context by the rv
             context.return_value = rv
             # try to parse the return value
@@ -112,19 +115,30 @@ class default_handler_wrapper:
 
             if status == 200:
                 # run th eafter_handler callbacks if there is no error
-                self.__run_after_handler(qor_request, context, app, *args, **kwargs)
+                self.__run_after_handler(qor_request, context, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
 
             else:
                 self.__run_error_callbacks(
-                    qor_request, context, app, status, *args, **kwargs
+                    qor_request,
+                    context,
+                    status,
+                    *args,
+                    **kwargs,
                 )
                 self.send_response(context, *args, **kwargs)
                 return
 
         except Exception as e:
-            self.__run_error_callbacks(qor_request, context, app, e, *args, **kwargs)
+            print(e)
+            self.__run_error_callbacks(
+                qor_request,
+                context,
+                e,
+                *args,
+                **kwargs,
+            )
             if context.return_value:
                 self.send_response(context, *args, **kwargs)
             else:
@@ -220,54 +234,76 @@ class Request:
     def __init__(self, kore_request, app: "Qor") -> None:
         self.request = kore_request
         self.app = app
+        self._populated = False
+        self._json = None
+        self._response_headers = {}
 
-    @property
+    @cached_property
     def method(self) -> str:
         return constants.METHOD_CODES[self.request.method]
 
-    @property
+    @cached_property
     def host(self) -> str:
         """The domain as a unicode string."""
         return self.request.host
 
-    @property
+    @cached_property
     def agent(self) -> str:
         """The user agent as a unicode string."""
         return self.request.agent
 
-    @property
+    @cached_property
     def path(self) -> str:
         """The requested path as a unicode string."""
         return self.request.path
 
-    @property
+    @cached_property
     def body(self) -> bytes:  # PyBuffer
         """The entire incoming HTTP body as a PyBuffer."""
         return self.request.body
 
-    @property
+    @cached_property
     def headers(self) -> dict:
         """the request headers as dictionary"""
         return self.request.headers
 
-    @property
+    @cached_property
     def _method_int(self) -> int:
         """The requested method as a PyLong. (kore.HTTP_METHOD_GET, etc)."""
         return self.request.method
 
-    @property
+    @cached_property
     def body_path(self) -> str:
         """The path to the HTTP body on disk (if enabled)."""
         return self.request.body_path
 
-    @property
+    @cached_property
     def connection(self) -> "Connection":
         """The underlying client connection as a kore.connection object."""
         return self.request.connection
 
-    @property
+    @cached_property
     def client_Address(self) -> str:
         return self.connection.addr
+
+    @cached_property
+    def content_type(self):
+        return self.request_header("Content-Type")
+
+    @cached_property
+    def is_form(self):
+        return self.content_type in (
+            "multipart/form-data",
+            "application/x-www-form-urlencoded",
+        )
+
+    @cached_property
+    def is_multipart(self):
+        return self.content_type == "application/x-www-form-urlencoded"
+
+    @cached_property
+    def is_json(self):
+        return self.content_type == "application/json"
 
     def cookie(self, name) -> Optional[str]:
         """Returns the cookie value for a given name.
@@ -362,6 +398,24 @@ class Request:
                     req.response(500, b'')"""
         return self.request.file_lookup(name)
 
+    @cached_property
+    def json(self):
+        self.populate()
+        return self._json
+
+    def populate(self):
+        """popultate request according to its mime type"""
+        if self._populated:
+            return
+        if self.is_form:
+            if self.is_multipart:
+                return self.populate_multipart()
+            else:
+                return self.populate_post()
+        elif self.is_json:
+            print(self.body)
+            self._json = json.loads(self.body)
+
     def populate_get(self) -> None:
         """
         req.populate_get()
@@ -422,7 +476,7 @@ class Request:
                 req.response_header("x-response", xrequest)
 
             req.response(200, b'hello world')"""
-        return self.request.response_header(name)
+        return self.request.request_header(name)
 
     def response_header(self, name: str, value) -> None:
         """Synopsis
@@ -443,7 +497,11 @@ class Request:
                 req.response_header("x-response", xrequest)
 
             req.response(200, b'hello world')"""
+        self._response_headers[name] = value
         self.request.response_header(name, value)
+
+    def get_response_header(self, name):
+        return self._response_headers.get(name)
 
     def websocket_handshake(self, onconnect, onmsg, ondisconnect) -> None:
         """Synopsis
