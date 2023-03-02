@@ -170,5 +170,6 @@ run_code.sh
 logs
 .vscode/*
 log
-examples/*
 */pidfile
+**/pidfile
+examples/example2/posts.json
