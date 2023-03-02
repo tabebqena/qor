@@ -31,7 +31,7 @@ qor = 'qor.cli:qor'
 
 
 [tool.poe.tasks]
-format = "black ."  # strings are interpreted as commands by default
+format = "black  --line-length 80 --preview ."  
 clean = """
 # Multiline commands including comments work too. Unescaped whitespace is ignored.
 rm -rf .coverage
