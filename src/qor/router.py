@@ -573,7 +573,26 @@ class Router(RouterBase):
                 )
         return parts
 
-    def reverse(self, __name, method=None, **kwargs):
+    def reverse(self, __name: str, **kwargs):
+        """reverse url for route using the route name & kwargs
+
+        Args:
+            __name (str): The route name
+
+        Raises:
+            Exception: if there is no route with this name
+
+        Returns:
+            str: the path to the provided route.
+
+        Example:
+
+        >>> router = Router()
+        >>> router.add_route(path="/users/<id:int>", handler=get_user, name="user")
+        >>> router.reverse("user", id=1)
+
+        /users/1
+        """
         route = self.find_route_by_name(__name)
         if not route:
             raise Exception(f"can't find route for {__name}")
