@@ -1,13 +1,23 @@
 import functools
 import socket
 import traceback
-from typing import TYPE_CHECKING, Callable, Dict, Iterable, Literal, Optional
+from importlib import import_module
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Iterable,
+    Literal,
+    Optional,
+    Union,
+)
 
 import click
 
 import qor.constants as constants
 from qor.config import BaseConfig
 from qor.router import Route, Router
+from qor.utils import import_object_from_module
 from qor.wrappers import (
     Context,
     Request,
@@ -57,6 +67,7 @@ class BaseApp:
             raise e
         self.setup()
         self.post_configure()
+        self.ready()
 
     def pre_configure(self):
         """"""
@@ -65,6 +76,9 @@ class BaseApp:
         pass
 
     def post_configure(self):
+        pass
+
+    def ready(self):
         pass
 
     def kore_config(self):
@@ -240,14 +254,32 @@ class Qor(BaseApp):
         self,
         name="",
         config: dict = {},
-        router: Router = None,
+        router: Union[Router, str] = None,
         template_adapter_class=None,
     ) -> None:
         self.name = name
         self.config = BaseConfig(**config)
         self._domains: Dict[str, "KoreDomain"] = {}
         self._default_domain = None
-        self.router: Router = router or Router(name=name)
+        if not router:
+            self.router = Router(name=name)
+        elif isinstance(router, str):
+            try:
+                router = import_object_from_module(router)
+            except ImportError as e:
+                raise Exception(f"Can't import router from {router}") from e
+            except AttributeError as e:
+                raise Exception(f"Can't import router from {router}") from e
+            except:
+                raise
+
+        elif isinstance(router, Router):
+            self.router: Router = router
+        else:
+            raise Exception(
+                "The provided router is wrong type, accepted types are: str,"
+                f" <qor.Router>, You set {type(router)}"
+            )
 
         self._auths = {}
         self._post_configure_callbacks = []
@@ -278,8 +310,8 @@ class Qor(BaseApp):
         super().configure(args)
         self._root_app = True
         if "print-routes-exit" in args:
-            if not self._setup_finished:
-                self.start()
+            # if not self._setup_finished:
+            #     self.start()
             print("\n")
             for route in self.router.routes:
                 print(route.name, route.handler, route.raw_path, route.methods)
@@ -329,6 +361,13 @@ class Qor(BaseApp):
             cb(self)
 
         return super().post_configure()
+
+    def ready(self):
+        for cb in self._app_ready_callbacks:
+            cb(self)
+
+        super().ready()
+        click.secho("qor ready ...", fg="blue")
 
     def _setup_method(func):
         @functools.wraps(func)
@@ -734,3 +773,14 @@ class Qor(BaseApp):
         if self.template_adapter:
             return self.template_adapter.render(template_name, *args, **kwargs)
         raise Exception("You didn't set tempalteb adapter")
+
+    def reverse(self, name: str, **kwargs) -> Optional[str]:
+        """return the url for route name using the provided kwargs
+
+        Args:
+            name (str): The route name
+
+        Returns:
+            _type_: The built url or `None`
+        """
+        return self.router.reverse(name, **kwargs)
