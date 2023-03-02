@@ -1,0 +1,56 @@
+#!/bin/sh
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | sed 's| |\\ |g')
+PYTHON_FILES = $(git diff --cached --name-only --diff-filter=ACMR | sed 's| |\\ |g' | grep -i -e '\\.py$')
+
+# run pycln on staged files
+echo "Running Pycln..⚒️⚒️⚒️"
+if [ "${#PYTHON_FILES}" -eq 0 ]; then
+    echo "No python files, skip pycln!"
+else
+   pycln -a $PYTHON_FILES
+   PYCLN_EXIT_CODE=$?
+   # check pycln exit code
+    if [ $PYCLN_EXIT_CODE -ne 0 ]; then
+        echo "No, pycln has errors..😠"
+        exit 1
+    else
+        echo "pycln runs good ..👍"
+    fi
+fi
+
+# run black formatter on staged files
+echo "Running black formatter..⚒️⚒️⚒️"
+if [ "${#PYTHON_FILES}" -eq 0 ]; then
+    echo "No python files, skip black!"
+else
+   black --line-length 80 --preview $PYTHON_FILES
+   BLACK_EXIT_CODE=$?
+   # check pycln exit code
+    if [ $BLACK_EXIT_CODE=$? -ne 0 ]; then
+        echo "No, black formatter has errors..😠"
+        exit 1
+    else
+        echo "black runs good ..👍"
+    fi
+fi
+
+# add files auto-fixed by the linter and prettier
+git add -f $STAGED_FILES
+
+
+# run tests related to staged files
+echo "Running Tests"
+pytest -s -v .
+PYTEST_EXIT_CODE=$?
+
+# check jest exit code
+if [ $PYTEST_EXIT_CODE -ne 0 ]; then
+    echo "Please you can do better than this, pytest failed..🙏🙏🙏"
+    exit 1
+else
+    echo "test all good..👍"
+fi
+
+# return 0-exit code
+echo "🎉 you are a rockstar..🔥🔥🔥"
+exit 0
