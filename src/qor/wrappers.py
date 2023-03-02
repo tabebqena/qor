@@ -66,7 +66,10 @@ class default_handler_wrapper:
 
         if is_int:
             for _status_or_exc, cb in _error_handlers:
-                if isinstance(_status_or_exc, int) and _status_or_exc == status_or_exc:
+                if (
+                    isinstance(_status_or_exc, int)
+                    and _status_or_exc == status_or_exc
+                ):
                     error_cb_rv = cb(request, *args, context=context, **kwargs)
                     if error_cb_rv is not None:
                         context.return_value = error_cb_rv
@@ -82,10 +85,12 @@ class default_handler_wrapper:
                         return
 
     def send_response(self, context: "Context", *args, **kwargs):
-        status, data = parse_return_value(context.return_value)
+        status, data, original_type = parse_return_value(context.return_value)
         if not context.request.get_response_header("Content-Type"):
-            if type(data) in (dict, tuple, list):
-                context.request.response_header("Content-Type", "application/json")
+            if original_type in (dict, tuple, list):
+                context.request.response_header(
+                    "Content-Type", "application/json"
+                )
             else:
                 context.request.response_header("Content-Type", "text/html")
 
@@ -97,7 +102,9 @@ class default_handler_wrapper:
 
         context = app.make_context(qor_request, route=self.route)
         try:
-            rv = self.__run_before_handler(qor_request, context, *args, **kwargs)
+            rv = self.__run_before_handler(
+                qor_request, context, *args, **kwargs
+            )
             if rv is not None:
                 context.return_value = rv
                 self.__run_after_handler(qor_request, context, *args, **kwargs)

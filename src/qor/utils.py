@@ -3,7 +3,7 @@ import importlib.util
 import json
 import logging
 from importlib.machinery import ModuleSpec
-from typing import Tuple, cast
+from typing import Any, Tuple, cast
 
 from qor.constants import METHOD_CODES
 
@@ -21,6 +21,18 @@ def import_object_by_path(path: str, module_name: str, object_name: str):
 
     spec.loader.exec_module(module)
     return module.__getattribute__(object_name)
+
+
+def import_object_from_module(import_name):
+    mod, oname = (
+        ".".join(import_name.split(".")[:-1]),
+        import_name.split(".")[-1],
+    )
+    try:
+        module = importlib.import_module(mod)
+    except ImportError as e:
+        raise
+    return getattr(module, oname)
 
 
 def int_to_method_name(id: int):
@@ -71,15 +83,17 @@ class cached_property(object):
         return attr
 
 
-def parse_return_value(value) -> Tuple[int, bytes]:
+def parse_return_value(value) -> Tuple[int, bytes, Any]:
     status = None
     value_bytes = value
+    original = None
     exception = None
 
     if isinstance(value, tuple) and len(value) == 2:
         try:
             status = int(value[0])
             value_bytes = to_bytes(value[1])
+            original = type(value[1])
         except Exception as e:
             logging.error(e)
             exception = e
@@ -87,9 +101,10 @@ def parse_return_value(value) -> Tuple[int, bytes]:
         try:
             status = 200
             value_bytes = to_bytes(value)
+            original = type(value)
         except Exception as e:
             logging.error(e)
             exception = e
     if exception is None:
-        return status, value_bytes
+        return status, value_bytes, original
     raise Exception("can't parse value. ") from (exception)

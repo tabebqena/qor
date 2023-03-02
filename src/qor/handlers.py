@@ -33,7 +33,7 @@ class rawp_handler:
         self.func = func
 
     def __call__(self, req, *args: Any, **kwds: Any) -> Any:
-        status, data = parse_return_value(self.func(req))
+        status, data, original = parse_return_value(self.func(req))
 
         req.response(status, data)
 
