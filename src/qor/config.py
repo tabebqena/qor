@@ -68,7 +68,7 @@ class BaseConfig(dict):
         #  keeping it in memory. Disabled by default.
         "http_body_disk_offload": 1024 * 1024,  # 1 MB TODO optimise this
         # 	A path where the temporary body files are written if the http_body_disk_offload setting is enabled.
-        "http_body_disk_path": 1,
+        "http_body_disk_path": ".req_body",
         # Allows you to override the Kore server header.
         "http_server_version": "",
         # 	If set to "yes" will display HTML based HTTP error codes. Defaults to "no".
