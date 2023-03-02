@@ -71,7 +71,9 @@ class BaseApp:
         """proxy for the kore.config method, this name is to avoid conflict withh possible subclass instance `config` property"""
         return self.kore.config
 
-    def server(self, name, ip: str, port: str, path: str, tls: bool = False) -> None:
+    def server(
+        self, name, ip: str, port: str, path: str, tls: bool = False
+    ) -> None:
         """Setup a new server with the given name.
 
         The ip and path keywords are mutually exclusive.
@@ -189,7 +191,9 @@ class BaseApp:
         data	The data to be broadcasted.
         scope	Whether or not this is broadcasted to all workers or just this one.
         """
-        self.kore.websocket_broadcast(c, op, data, self.kore.WEBSOCKET_BROADCAST_GLOBAL)
+        self.kore.websocket_broadcast(
+            c, op, data, self.kore.WEBSOCKET_BROADCAST_GLOBAL
+        )
 
     def worker(self) -> int:
         """Returns the worker ID the code is currently running under."""
@@ -210,7 +214,9 @@ class BaseApp:
         """
         self.kore.corotrace(enabled)
 
-    def privsep(self, name: str, root: str = "/var/chroot/kore", runas: str = "_kore"):
+    def privsep(
+        self, name: str, root: str = "/var/chroot/kore", runas: str = "_kore"
+    ):
         """Configuration privilege separation for Kore processes.
 
         This allows you to set the root directory of each process and what user it will run as.
@@ -248,14 +254,16 @@ class Qor(BaseApp):
         self._pre_configure_callbacks = []
         self._before_handler_callbacks = []
         self._after_handler_callbacks = []
+        self._app_ready_callbacks = []
         self._error_handlers = []
         self._setup_finished = False
         self.template_adapter: Optional[BaseTemplateAdapter] = None
         if template_adapter_class:
             self.template_adapter = template_adapter_class(self)
         self.callbacks_map = {
-            "post_config": self._post_configure_callbacks,
             "pre_config": self._pre_configure_callbacks,
+            "post_config": self._post_configure_callbacks,
+            "app_ready": self._app_ready_callbacks,
             "before_handler": self._before_handler_callbacks,
             "after_handler": self._after_handler_callbacks,
             "error_handler": self._error_handlers,
@@ -300,7 +308,9 @@ class Qor(BaseApp):
         for server_name, server_data in self.config.get("servers", {}).items():
             self.server(server_name, **server_data)
             click.secho(
-                (f"{server_name} {server_data.get('ip')}:{server_data.get('port')}"),
+                (
+                    f"{server_name} {server_data.get('ip')}:{server_data.get('port')}"
+                ),
                 fg="blue",
             )
         for domain_name, domain_data in self.config.get("domains", {}).items():
@@ -335,7 +345,9 @@ class Qor(BaseApp):
     @_setup_method
     def _apply_dev_patches(self):
         self.tracer(dev_tracer)
-        if not self.config.get("servers", {}) and not self.config.get("domains", {}):
+        if not self.config.get("servers", {}) and not self.config.get(
+            "domains", {}
+        ):
             server_name = self.config.get("default_server_name", "default")
             ip = self.config.get("default_server_ip", "127.0.0.1")
             port = self.config.get("default_server_port", "8888")
@@ -360,7 +372,7 @@ class Qor(BaseApp):
             )
         if not self.config.get("disable_auto_run", False):
             self.callback(
-                "post_config",
+                "app_ready",
             )(self.start)
 
     @_setup_method
@@ -438,8 +450,10 @@ class Qor(BaseApp):
 
     def start(self, *args):
         self._before_handler_callbacks = tuple(self._before_handler_callbacks)
-        self._after_handler_callbacks = tuple(reversed(self._after_handler_callbacks))
-        self.__register_routes()
+        self._after_handler_callbacks = tuple(
+            reversed(self._after_handler_callbacks)
+        )
+        self._register_routes()
 
     def make_context(self, qor_request, **kwargs):
         return Context(app=self, request=qor_request, **kwargs)
@@ -447,7 +461,7 @@ class Qor(BaseApp):
     def wrap_request(self, kore_request, **kwargs):
         return self.request_class(kore_request, self, **kwargs)
 
-    def __register_routes(self):
+    def _register_routes(self):
         """
         register the app `_routes` to theier domain or the default domain.
 
@@ -705,6 +719,13 @@ class Qor(BaseApp):
     def error_handler(self, exc_or_status):
         def wrapper(func):
             self.callback("error_handler")(func, exc_or_status=exc_or_status)
+            return func
+
+        return wrapper
+
+    def on_ready(self):
+        def wrapper(func):
+            self.callback("app_ready")(func)
             return func
 
         return wrapper
