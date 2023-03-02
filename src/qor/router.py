@@ -49,7 +49,8 @@ def find_between(s, start, end):
 
 def multi_urljoin(*parts):
     _parts = [
-        part.replace("/", "", 1) if part.startswith("/") else part for part in parts
+        part.replace("/", "", 1) if part.startswith("/") else part
+        for part in parts
     ]
     rv = "/".join(_parts)
     # return urljoin(
@@ -191,9 +192,15 @@ class Route(dict):
         )
         if data.get("auth", None):
             data.setdefault("auth_type", data.get("auth", {}).get("auth_type"))
-            data.setdefault("auth_value", data.get("auth", {}).get("auth_value"))
-            data.setdefault("auth_redirect", data.get("auth", {}).get("auth_redirect"))
-            data.setdefault("auth_verify", data.get("auth", {}).get("auth_verify"))
+            data.setdefault(
+                "auth_value", data.get("auth", {}).get("auth_value")
+            )
+            data.setdefault(
+                "auth_redirect", data.get("auth", {}).get("auth_redirect")
+            )
+            data.setdefault(
+                "auth_verify", data.get("auth", {}).get("auth_verify")
+            )
 
         super().__init__(**data)
 
@@ -269,9 +276,9 @@ class Route(dict):
 
     @property
     def has_auth(self):
-        return bool(self.auth_type and self.auth_value and self.auth_verify) or bool(
-            self.auth_name
-        )
+        return bool(
+            self.auth_type and self.auth_value and self.auth_verify
+        ) or bool(self.auth_name)
 
     @property
     def parts(self):
@@ -308,7 +315,9 @@ class RouterBase:
 class Router(RouterBase):
     _path_converters = path_converters
 
-    def __init__(self, name="", allow_override=False, path_conveters={}) -> None:
+    def __init__(
+        self, name="", allow_override=False, path_conveters={}
+    ) -> None:
         self.name = name
         self._routers: dict[str, "Router"] = {}
         self._raw_routes: list[dict] = []
@@ -335,7 +344,11 @@ class Router(RouterBase):
     def find_route(self, domain: str, path: str, method: str):
         _routes = self._routes
         for route in _routes:
-            if route.domain == domain and route.path == path and route.method == method:
+            if (
+                route.domain == domain
+                and route.path == path
+                and route.method == method
+            ):
                 return route
         return None
 
@@ -458,7 +471,9 @@ class Router(RouterBase):
 
     def __join_all(self, base_names=[], base_paths=[]):
         rv = self.__join_self_routes(base_names + [self.name], base_paths)
-        rv.extend(self.__join_nested_routes(base_names + [self.name], base_paths))
+        rv.extend(
+            self.__join_nested_routes(base_names + [self.name], base_paths)
+        )
         return rv
 
     def build_routes(self, base_name="", base_path="/"):

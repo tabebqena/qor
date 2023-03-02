@@ -104,7 +104,8 @@ class Watcher:
     def run(self):
         if not self.shell and not isinstance(self.command, list):
             raise Exception(
-                "You should provide command as a list ex:. ['ls', '-a'] when the shell is False"
+                "You should provide command as a list ex:. ['ls', '-a'] when"
+                " the shell is False"
             )
         self.process = subprocess.Popen(
             self.command, shell=self.shell, stdout=sys.stdout, stderr=sys.stderr
@@ -152,7 +153,9 @@ class Watcher:
         self.observer.schedule(self.logger_handler, self.path, recursive=True)
         self.observer.schedule(self.reloader, self.path, recursive=True)
         self.observer.start()
-        logging.getLogger("watchdog.observers.inotify_buffer").setLevel(logging.ERROR)
+        logging.getLogger("watchdog.observers.inotify_buffer").setLevel(
+            logging.ERROR
+        )
         try:
             while True:
                 rv = self.process.poll()

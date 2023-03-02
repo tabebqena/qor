@@ -152,7 +152,9 @@ class StandAloneWSGIHandler(ServerHandler):
         multiprocess=True,
         kore_request=None,
     ) -> None:
-        super().__init__(stdin, stdout, stderr, environ, multithread, multiprocess)
+        super().__init__(
+            stdin, stdout, stderr, environ, multithread, multiprocess
+        )
         self.kore_request = kore_request
         self.setup_server_environ()
         self.setup_handler_environ()
@@ -183,7 +185,9 @@ class StandAloneWSGIHandler(ServerHandler):
         self.request_version = "HTTP/1.1"  # get it from the request
         self.path = path
         self.command = int_to_method_name(method).upper()
-        self.requestline = f"[{host}] [{agent}] [{self.command}] {host}{self.path}"
+        self.requestline = (
+            f"[{host}] [{agent}] [{self.command}] {host}{self.path}"
+        )
 
     def run(self, application):
         try:
@@ -195,7 +199,11 @@ class StandAloneWSGIHandler(ServerHandler):
             self.finish_response()
             self.send_to_kore()
             self.real_close()
-        except (ConnectionAbortedError, BrokenPipeError, ConnectionResetError) as e:
+        except (
+            ConnectionAbortedError,
+            BrokenPipeError,
+            ConnectionResetError,
+        ) as e:
             # We expect the client to close the connection abruptly from time
             # to time.
             # TODO: send something to kore
@@ -316,7 +324,11 @@ class StandAloneWSGIHandler(ServerHandler):
     def log_message(self, format, *args):
         sys.stderr.write(
             "%s - - [%s] %s\n"
-            % (self.address_string(), self.log_date_time_string(), format % args)
+            % (
+                self.address_string(),
+                self.log_date_time_string(),
+                format % args,
+            )
         )
 
     def address_string(self):
@@ -399,7 +411,11 @@ class KoreServerHandler(ServerHandler):
             # We didn't finish before
             self.close()
 
-        except (ConnectionAbortedError, BrokenPipeError, ConnectionResetError) as e:
+        except (
+            ConnectionAbortedError,
+            BrokenPipeError,
+            ConnectionResetError,
+        ) as e:
             # We expect the client to close the connection abruptly from time
             # to time.
             # TODO: send something to kore
@@ -528,7 +544,9 @@ class KoreWSGIRequestHandler(_WSGIRequestHandler):
 
     default_request_version = "HTTP/0.9"
 
-    def __init__(self, kore_request, client_address, server: BaseServer) -> None:
+    def __init__(
+        self, kore_request, client_address, server: BaseServer
+    ) -> None:
         self.headers = kore_request.headers()
         self.stderr = StringIO()
         super().__init__(kore_request, client_address, server)
@@ -599,7 +617,10 @@ class KoreWSGIRequestHandler(_WSGIRequestHandler):
         conntype = self.headers.get("Connection")
         if conntype.lower() == "close":
             self.close_connection = True
-        elif conntype.lower() == "keep-alive" and self.protocol_version >= "HTTP/1.1":
+        elif (
+            conntype.lower() == "keep-alive"
+            and self.protocol_version >= "HTTP/1.1"
+        ):
             self.close_connection = False
         # Examine the headers and look for an Expect directive
         expect = self.headers.get("Expect")
@@ -621,7 +642,9 @@ class KoreWSGIRequestHandler(_WSGIRequestHandler):
     def send_response(self, code: int, message: Optional[str] = None) -> None:
         return super().send_response(code, message)
 
-    def send_response_only(self, code: int, message: Optional[str] = None) -> None:
+    def send_response_only(
+        self, code: int, message: Optional[str] = None
+    ) -> None:
         """Send the response header only."""
         if self.request_version != "HTTP/0.9":
             if message is None:
@@ -633,13 +656,16 @@ class KoreWSGIRequestHandler(_WSGIRequestHandler):
             if not hasattr(self, "_headers_buffer"):
                 self._headers_buffer = []
             self._headers_buffer.append(
-                ("%s %d %s\r\n" % (self.protocol_version, code, message)).encode(
-                    "latin-1", "strict"
-                )
+                (
+                    "%s %d %s\r\n" % (self.protocol_version, code, message)
+                ).encode("latin-1", "strict")
             )
 
     def send_error(
-        self, code: int, message: Optional[str] = None, explain: Optional[str] = None
+        self,
+        code: int,
+        message: Optional[str] = None,
+        explain: Optional[str] = None,
     ) -> None:
         return super().send_error(code, message, explain)
 

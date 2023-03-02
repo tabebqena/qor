@@ -6,14 +6,26 @@ from qor.router import analyze_part, path_converters
 
 def test_analyze_part():
     assert analyze_part("", path_converters) == ("", path_converters["string"])
-    assert analyze_part("id", path_converters) == ("id", path_converters["string"])
+    assert analyze_part("id", path_converters) == (
+        "id",
+        path_converters["string"],
+    )
     assert analyze_part("id:string", path_converters) == (
         "id",
         path_converters["string"],
     )
-    assert analyze_part("id:int", path_converters) == ("id", path_converters["int"])
-    assert analyze_part("id:float", path_converters) == ("id", path_converters["float"])
-    assert analyze_part("id:float", path_converters) == ("id", path_converters["float"])
+    assert analyze_part("id:int", path_converters) == (
+        "id",
+        path_converters["int"],
+    )
+    assert analyze_part("id:float", path_converters) == (
+        "id",
+        path_converters["float"],
+    )
+    assert analyze_part("id:float", path_converters) == (
+        "id",
+        path_converters["float"],
+    )
 
 
 def test_analayze_part_long():

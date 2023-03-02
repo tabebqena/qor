@@ -72,12 +72,16 @@ def test_build_routes_nesting():
     assert second_about.name == "first:second:second_about"
     assert second_about.raw_path == "/first/second/second_about/"
 
-    second_contact = main_router.find_route_by_name("first:second:second_contact")
+    second_contact = main_router.find_route_by_name(
+        "first:second:second_contact"
+    )
     assert second_contact
     assert second_contact.name == "first:second:second_contact"
     assert second_contact.raw_path == "/first/second/second_contact/"
 
-    second_privacy = main_router.find_route_by_name("first:second:second_privacy")
+    second_privacy = main_router.find_route_by_name(
+        "first:second:second_privacy"
+    )
     assert second_privacy
     assert second_privacy.name == "first:second:second_privacy"
     assert (
