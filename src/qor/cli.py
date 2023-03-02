@@ -40,25 +40,51 @@ def qor():
     """qor cli"""
 
 
-@qor.command(name="run", help="run `qor` app. `qor run --app <PATH>`")
-@click.option(
-    "-a",
-    "--app",
+@qor.command(
+    name="run",
+    help=(
+        "run `Qor` app. `qor run <PATH>`, or just `qor run`, if path omitted,"
+        " the `KORE_APP` env variable will be used. if not set, The file named"
+        " `app.py` in the current working dir will be used. if not found, error"
+        " message will appear."
+    ),
+)
+@click.argument(
+    "app",
     default=None,
-    help="app path. if omitted, the `KORE_APP` env variable will be used. if not set, The file named `app.py` in the current working dir will be used.",
+    nargs=-1,
 )
-@click.option(
-    "-w", "--watch", default=True, help="Whether to watch the files changes or not."
-)
-def run(app, watch):
+
+# @click.option(
+#     "-w",
+#     "--watch",
+#     default=True,
+#     help="Whether to watch the files changes or not.",
+# )
+def run(app, watch=True):
+    if app and len(app) > 1:
+        click.secho(
+            (
+                "You should pass only one app, No more. you passed"
+                f" {len(app)} > {app}"
+            ),
+            err=True,
+            fg="red",
+        )
+        return
+    if app:
+        app = app[0]
+
     if not app:
         app = find_app()
 
     if not app:
         click.secho(
-            "can't find app, please set `KORE_APP` env variable or "
-            "pass its path on the cmd:. `qor run src/app.py` "
-            "if you did that, ensure that path exists.",
+            (
+                "can't find app, please set `KORE_APP` env variable or "
+                "pass its path on the cmd:. `qor run src/app.py` "
+                "if you did that, ensure that path exists."
+            ),
             err=True,
             fg="red",
         )
@@ -66,7 +92,8 @@ def run(app, watch):
     app = os.path.abspath(app)
 
     if not os.path.exists(app):
-        click.secho(message=f"app not found, {app},", err=True, fg="red")
+        click.secho(message=f"app not found, {app}", err=True, fg="red")
+        return
 
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
@@ -82,7 +109,9 @@ def run(app, watch):
             logger=logger,
             shell=False,
         )
-        logging.getLogger("watchdog.observers.inotify_buffer").setLevel(logging.ERROR)
+        logging.getLogger("watchdog.observers.inotify_buffer").setLevel(
+            logging.ERROR
+        )
 
         try:
             o.run()
@@ -114,16 +143,21 @@ def run(app, watch):
     "-a",
     "--app",
     default=None,
-    help="app path. if omitted, the `KORE_APP` env variable will be used. if not set, The file named `app.py` in the current working dir will be used.",
+    help=(
+        "app path. if omitted, the `KORE_APP` env variable will be used. if not"
+        " set, The file named `app.py` in the current working dir will be used."
+    ),
 )
 def routes(app):
     if not app:
         app = find_app()
     if not app:
         click.secho(
-            "can't find app, please set `KORE_APP` env variable or"
-            "pass its path on the cmd:. `qor run src/app.py` "
-            "if you did that, ensure that path exists.",
+            (
+                "can't find app, please set `KORE_APP` env variable or"
+                "pass its path on the cmd:. `qor run src/app.py` "
+                "if you did that, ensure that path exists."
+            ),
             err=True,
             fg="red",
         )
