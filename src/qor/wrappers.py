@@ -174,8 +174,7 @@ class simple_wrapper:
         self.app: "Qor" = app
         self.kwargs = kwargs
 
-    def __call__(self, _request, *args: Any, **kwds: Any) -> Any:
-        request = Request(_request, self.app)
+    def __call__(self, request: "Request", *args: Any, **kwds: Any) -> Any:
         return self.func(request, *args, **kwds)
 
     def __repr__(self) -> str:
@@ -288,7 +287,7 @@ class Request:
     @cached_property
     def headers(self) -> dict:
         """the request headers as dictionary"""
-        return self.request.headers
+        return self.request.headers()
 
     @cached_property
     def _method_int(self) -> int:
@@ -306,7 +305,7 @@ class Request:
         return self.request.connection
 
     @cached_property
-    def client_Address(self) -> str:
+    def client_address(self) -> str:
         return self.connection.addr
 
     @cached_property
