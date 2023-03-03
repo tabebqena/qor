@@ -27,6 +27,21 @@ class default_handler_wrapper:
         self.app: "Qor" = app
         self.route = route
         self.kwargs = kwargs
+        self.re_parts = []
+        for part in self.route.parts:
+            if part.get("isreg", False):
+                self.re_parts.append(part)
+        self.re_parts_length = len(self.re_parts)
+
+    def __prepare_args(self, *args):
+        rv = []
+        parts = self.re_parts
+        if len(args) == self.re_parts_length:
+            for index, arg in enumerate(args):
+                part = parts[index]
+                rv.append(part.get("to_python", lambda v: v)(arg))
+            return rv
+        return args
 
     def __run_before_handler(
         self,
@@ -98,6 +113,7 @@ class default_handler_wrapper:
 
     def __call__(self, kore_request, *args: Any, **kwargs: Any) -> Any:
         app = self.app
+        args = self.__prepare_args(*args)
         qor_request = app.wrap_request(kore_request)
 
         context = app.make_context(qor_request, route=self.route)
@@ -115,7 +131,7 @@ class default_handler_wrapper:
             # quick update context by the rv
             context.return_value = rv
             # try to parse the return value
-            status, data = parse_return_value(rv)
+            status, data, original_type = parse_return_value(rv)
             # update context
             context.response_status = status
             context.response_data = data
