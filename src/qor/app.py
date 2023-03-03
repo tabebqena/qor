@@ -417,11 +417,20 @@ class Qor(BaseApp):
     @_setup_method
     def auth(
         self,
-        name,
+        name: str,
         type: Literal["header", "cookie"],
         value: str,
         redirect_url: str = "/",
     ):
+        """register function as auth route using the provided name
+
+        Args:
+            name (str): The auth name
+            type (Literal[&quot;header&quot;, &quot;cookie&quot;]): auth type, headers or cookie
+            value (str): The name of the header or the cookie to search for the auth data
+            redirect_url (str, optional): The url to redirect to if unauthenticated. Defaults to "/".
+        """
+
         def decorator(func):
             self._auths[name] = {
                 "type": type,
@@ -463,29 +472,6 @@ class Qor(BaseApp):
             return func
 
         return wrapper
-
-    @_setup_method
-    def add_route(
-        self,
-        path: str,
-        handler=Callable,
-        name="",
-        methods=["get"],
-        params={},
-        auth_name=None,
-        key: str = None,
-        domain: str = None,
-    ):
-        self.router.add_route(
-            path=path,
-            handler=handler,
-            name=name,
-            domain=domain,
-            methods=methods,
-            params=params,
-            auth_name=auth_name,
-            key=key,
-        )
 
     def start(self, *args):
         self._before_handler_callbacks = tuple(self._before_handler_callbacks)
@@ -577,6 +563,31 @@ class Qor(BaseApp):
             domain.route(path, handler, methods=[method], **kwargs)
 
     @_setup_method
+    def add_route(
+        self,
+        path: str,
+        handler=Callable,
+        name="",
+        methods=["get"],
+        params={},
+        auth_name=None,
+        key: str = None,
+        domain: str = None,
+        **kwargs,
+    ):
+        return self.router.add_route(
+            path=path,
+            handler=handler,
+            name=name,
+            methods=methods,
+            params=params,
+            auth_name=auth_name,
+            key=key,
+            domain=domain,
+            **kwargs,
+        )
+
+    @_setup_method
     def route(
         self,
         path: str,
@@ -586,21 +597,18 @@ class Qor(BaseApp):
         params={},
         auth_name=None,
         domain=None,
+        **kwargs,
     ):
-        def wrapper(func):
-            self.add_route(
-                path=path,
-                handler=func,
-                name=name,
-                methods=methods,
-                params=params,
-                auth_name=auth_name,
-                key=key,
-                domain=domain,
-            )
-            return func
-
-        return wrapper
+        return self.router.route(
+            path=path,
+            methods=methods,
+            name=name,
+            key=key,
+            params=params,
+            auth_name=auth_name,
+            domain=domain,
+            **kwargs,
+        )
 
     def get(
         self,
@@ -610,21 +618,17 @@ class Qor(BaseApp):
         params={},
         auth_name=None,
         domain=None,
+        **kwargs,
     ):
-        def wrapper(func):
-            self.add_route(
-                path=path,
-                handler=func,
-                name=name,
-                methods=["get"],
-                params=params,
-                auth_name=auth_name,
-                key=key,
-                domain=domain,
-            )
-            return func
-
-        return wrapper
+        return self.router.get(
+            path=path,
+            name=name,
+            key=key,
+            params=params,
+            auth_name=auth_name,
+            domain=domain,
+            **kwargs,
+        )
 
     def post(
         self,
@@ -634,21 +638,17 @@ class Qor(BaseApp):
         params={},
         auth_name=None,
         domain=None,
+        **kwargs,
     ):
-        def wrapper(func):
-            self.add_route(
-                path=path,
-                handler=func,
-                name=name,
-                methods=["post"],
-                params=params,
-                auth_name=auth_name,
-                key=key,
-                domain=domain,
-            )
-            return func
-
-        return wrapper
+        return self.router.post(
+            path=path,
+            name=name,
+            key=key,
+            params=params,
+            auth_name=auth_name,
+            domain=domain,
+            **kwargs,
+        )
 
     def put(
         self,
@@ -658,21 +658,17 @@ class Qor(BaseApp):
         params={},
         auth_name=None,
         domain=None,
+        **kwargs,
     ):
-        def wrapper(func):
-            self.add_route(
-                path=path,
-                handler=func,
-                name=name,
-                methods=["put"],
-                params=params,
-                auth_name=auth_name,
-                key=key,
-                domain=domain,
-            )
-            return func
-
-        return wrapper
+        return self.router.put(
+            path=path,
+            name=name,
+            key=key,
+            params=params,
+            auth_name=auth_name,
+            domain=domain,
+            **kwargs,
+        )
 
     def patch(
         self,
@@ -682,21 +678,17 @@ class Qor(BaseApp):
         params={},
         auth_name=None,
         domain=None,
+        **kwargs,
     ):
-        def wrapper(func):
-            self.add_route(
-                path=path,
-                handler=func,
-                name=name,
-                methods=["patch"],
-                params=params,
-                auth_name=auth_name,
-                key=key,
-                domain=domain,
-            )
-            return func
-
-        return wrapper
+        return self.router.patch(
+            path=path,
+            name=name,
+            key=key,
+            params=params,
+            auth_name=auth_name,
+            domain=domain,
+            **kwargs,
+        )
 
     def delete(
         self,
@@ -706,21 +698,20 @@ class Qor(BaseApp):
         params={},
         auth_name=None,
         domain=None,
+        **kwargs,
     ):
-        def wrapper(func):
-            self.add_route(
-                path=path,
-                handler=func,
-                name=name,
-                methods=["delete"],
-                params=params,
-                auth_name=auth_name,
-                key=key,
-                domain=domain,
-            )
-            return func
+        return self.router.delete(
+            path=path,
+            name=name,
+            key=key,
+            params=params,
+            auth_name=auth_name,
+            domain=domain,
+            **kwargs,
+        )
 
-        return wrapper
+    def mount_router(self, path: str, router: Router):
+        return self.router.mount_router(path=path, router=router)
 
     def callback(self, type: str, **kwargs):
         """a decorator to register callback.

@@ -21,15 +21,15 @@ END = ">"
 # can pass pure rejex by using the filter `re`
 path_converters = {
     # int is any character from 0-9 repeated one or more times
-    "int": "[0-9]+",  # "\d+",  # r"\d+"
+    "int": ("[0-9]+", lambda v: int(v)),  # "\d+",  # r"\d+"
     # float is two integers seperated by `.`
-    "float": "[0-9]+.[0-9]+",  # r"\d+\.\d+"
+    "float": ("[0-9]+.[0-9]+", lambda v: float(v)),  # r"\d+\.\d+"
     # path is a: string that starts with `/` then any character then optional `/`
     # "path": "(\/.*\/?)",  # "[^/].*?",  # r"[^/].*?",  # "[^/].*?"
     # match any thing except `/`
-    "string": "[^\/]+",
+    "string": ("[^\/]+", lambda v: str(v)),
     # placeholder for rejex cinverter, the user should provide his own rejex using this converter
-    "re": None,
+    "re": (None, None),
 }
 
 # This matches most of the allowed characters in url
@@ -84,6 +84,7 @@ def analyze_part(string, path_converters: dict):
         else:
             _filter_name = "re"
             _string = splitted[0]
+            rejex = splitted[2]
 
     if _filter_name not in path_converters:
         raise Exception(
@@ -92,7 +93,16 @@ def analyze_part(string, path_converters: dict):
             f" {', '.join(path_converters.keys())}"
         )
 
-    return _string, path_converters[_filter_name] or splitted[2]
+    converter = path_converters[_filter_name]
+
+    if _filter_name == "re":
+        regex = splitted[2]
+        to_python = lambda v: v
+    else:
+        regex = converter[0]
+        to_python = lambda v: converter[1](v)
+
+    return _string, regex, to_python
 
 
 def build_path(
@@ -359,60 +369,6 @@ class Router(RouterBase):
                 return route
         return None
 
-    def add_route(
-        self,
-        path: str,
-        handler: Callable,
-        name=None,
-        domain: str = None,
-        methods=["get"],
-        params={},
-        auth_name=None,
-        key="",
-        auth_type=None,  # header or cookie
-        auth_value=None,  # header or cookie name
-        auth_redirect="/",
-        # redirect location upon failure,
-        # if not set, 403 is returned.
-        auth_verify=None,
-    ):
-        _methods = []
-        for method in methods:
-            method = method.lower()
-            if method not in constants.ALLOWED_METHODS:
-                raise Exception(f"method {method} not allowed")
-            _methods.append(method)
-        methods = _methods
-
-        if not self.allow_override:
-            value = self.find_raw_route(domain, path, method)
-            if value:
-                raise Exception(
-                    "There is already registered handeler for the same domain"
-                    f" path, {domain}:{path}"
-                )
-
-        for method in methods:
-            self._raw_routes.append(
-                dict(
-                    name=name,
-                    path=None,
-                    raw_path=path,
-                    handler=handler,
-                    method=method,
-                    domain=domain,
-                    params=params,
-                    auth_name=auth_name,
-                    key=key,
-                    auth_type=auth_type,  # header or cookie
-                    auth_value=auth_value,  # header or cookie name
-                    auth_redirect=auth_redirect,
-                    # redirect location upon failure,
-                    # if not set, 403 is returned.
-                    auth_verify=auth_verify,
-                ),
-            )
-
     def mount_router(self, path: str, router: "Router"):
         """mount child router to this router, this means that the child urls
         will be built as sub urls to this router path.
@@ -492,11 +448,11 @@ class Router(RouterBase):
             handler = route.get("handler")
             name = route.get("name", None)
 
-            path_conveters = self._path_converters
-            path_conveters.update(route.get("path_conveters", {}))
+            router_path_conveters = self._path_converters
+            router_path_conveters.update(route.get("path_conveters", {}))
             raw_path = route.get("raw_path")
 
-            parts = self.parse_route_path(raw_path, path_conveters)
+            parts = self.parse_route_path(raw_path, router_path_conveters)
             path = kore_re_string(parts)
             self._routes.append(
                 Route(
@@ -519,41 +475,6 @@ class Router(RouterBase):
                 )
             )
 
-    def route(
-        self,
-        path: str,
-        name=None,
-        domain: str = None,
-        methods=["get"],
-        params={},
-        auth_name=None,
-        auth_type=None,  # header or cookie
-        auth_value=None,  # header or cookie name
-        auth_redirect="/",
-        # redirect location upon failure,
-        # if not set, 403 is returned.
-        auth_verify=None,
-    ):
-        def wrapper(func):
-            self.add_route(
-                path=path,
-                handler=func,
-                name=name,
-                domain=domain,
-                methods=methods,
-                params=params,
-                auth_name=auth_name,
-                auth_type=auth_type,  # header or cookie
-                auth_value=auth_value,  # header or cookie name
-                auth_redirect=auth_redirect,
-                # redirect location upon failure,
-                # if not set, 403 is returned.
-                auth_verify=auth_verify,
-            )
-            return func
-
-        return wrapper
-
     def parse_route_path(self, path: str = "", path_filters={}) -> list:
         """parse path and return its rejex parts & variable names
 
@@ -568,7 +489,7 @@ class Router(RouterBase):
 
         for part in splitted:
             if part.startswith(START) and part.endswith(END):
-                varname, reg = analyze_part(
+                varname, reg, to_python = analyze_part(
                     find_between(part, START, END), path_filters
                 )
                 parts.append(
@@ -576,6 +497,7 @@ class Router(RouterBase):
                         "re": reg,
                         "name": varname,
                         "isreg": True,
+                        "to_python": to_python,
                     }
                 )
             else:
@@ -619,3 +541,224 @@ class Router(RouterBase):
     def show_all(self):
         for route in self.routes:
             print(route.name, "    ", route.raw_path)
+
+    def add_route(
+        self,
+        path: str,
+        handler: Callable,
+        name=None,
+        domain: str = None,
+        methods=["get"],
+        params={},
+        auth_name=None,
+        key="",
+        auth_type=None,  # header or cookie
+        auth_value=None,  # header or cookie name
+        auth_redirect="/",
+        auth_verify=None,
+    ):
+        _methods = []
+        for method in methods:
+            method = method.lower()
+            if method not in constants.ALLOWED_METHODS:
+                raise Exception(f"method {method} not allowed")
+            _methods.append(method)
+        methods = _methods
+
+        if not self.allow_override:
+            value = self.find_raw_route(domain, path, method)
+            if value:
+                raise Exception(
+                    "There is already registered handeler for the same domain"
+                    f" path, {domain}:{path}"
+                )
+
+        for method in methods:
+            self._raw_routes.append(
+                dict(
+                    name=name,
+                    path=None,
+                    raw_path=path,
+                    handler=handler,
+                    method=method,
+                    domain=domain,
+                    params=params,
+                    auth_name=auth_name,
+                    key=key,
+                    auth_type=auth_type,  # header or cookie
+                    auth_value=auth_value,  # header or cookie name
+                    auth_redirect=auth_redirect,
+                    # redirect location upon failure,
+                    # if not set, 403 is returned.
+                    auth_verify=auth_verify,
+                ),
+            )
+
+    def route(
+        self,
+        path: str,
+        name=None,
+        domain: str = None,
+        methods=["get"],
+        params={},
+        auth_name=None,
+        auth_type=None,  # header or cookie
+        auth_value=None,  # header or cookie name
+        auth_redirect="/",
+        # redirect location upon failure,
+        # if not set, 403 is returned.
+        auth_verify=None,
+        key="",
+        **kwargs,
+    ):
+        def wrapper(func):
+            self.add_route(
+                path=path,
+                handler=func,
+                name=name,
+                domain=domain,
+                methods=methods,
+                params=params,
+                auth_name=auth_name,
+                auth_type=auth_type,  # header or cookie
+                auth_value=auth_value,  # header or cookie name
+                auth_redirect=auth_redirect,
+                # redirect location upon failure,
+                # if not set, 403 is returned.
+                auth_verify=auth_verify,
+                key=key,
+                **kwargs,
+            )
+            return func
+
+        return wrapper
+
+    def get(
+        self,
+        path: str,
+        name="",
+        key="",
+        params={},
+        auth_name=None,
+        domain=None,
+        **kwargs,
+    ):
+        def wrapper(func):
+            self.add_route(
+                path=path,
+                handler=func,
+                name=name,
+                methods=["get"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
+                **kwargs,
+            )
+            return func
+
+        return wrapper
+
+    def post(
+        self,
+        path: str,
+        name="",
+        key=None,
+        params={},
+        auth_name=None,
+        domain=None,
+        **kwargs,
+    ):
+        def wrapper(func):
+            self.add_route(
+                path=path,
+                handler=func,
+                name=name,
+                methods=["post"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
+                **kwargs,
+            )
+            return func
+
+        return wrapper
+
+    def put(
+        self,
+        path: str,
+        name="",
+        key=None,
+        params={},
+        auth_name=None,
+        domain=None,
+        **kwargs,
+    ):
+        def wrapper(func):
+            self.add_route(
+                path=path,
+                handler=func,
+                name=name,
+                methods=["put"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
+                **kwargs,
+            )
+            return func
+
+        return wrapper
+
+    def patch(
+        self,
+        path: str,
+        name="",
+        key=None,
+        params={},
+        auth_name=None,
+        domain=None,
+        **kwargs,
+    ):
+        def wrapper(func):
+            self.add_route(
+                path=path,
+                handler=func,
+                name=name,
+                methods=["patch"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
+                **kwargs,
+            )
+            return func
+
+        return wrapper
+
+    def delete(
+        self,
+        path: str,
+        name="",
+        key=None,
+        params={},
+        auth_name=None,
+        domain=None,
+        **kwargs,
+    ):
+        def wrapper(func):
+            self.add_route(
+                path=path,
+                handler=func,
+                name=name,
+                methods=["delete"],
+                params=params,
+                auth_name=auth_name,
+                key=key,
+                domain=domain,
+                **kwargs,
+            )
+            return func
+
+        return wrapper
