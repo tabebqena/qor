@@ -38,7 +38,11 @@ def test_valid_int():
         parts=[
             {"isreg": False, "value": ""},
             {"isreg": False, "value": "user"},
-            {"isreg": True, "name": "id", "re": path_converters["int"]},
+            {
+                "isreg": True,
+                "name": "id",
+                "re": path_converters["int"][0],
+            },
         ]
     )
     assert build_path(r, id=5) == "/user/5"
@@ -49,7 +53,7 @@ def test_valid_string():
         parts=[
             {"isreg": False, "value": ""},
             {"isreg": False, "value": "user"},
-            {"isreg": True, "name": "name", "re": path_converters["string"]},
+            {"isreg": True, "name": "name", "re": path_converters["string"][0]},
         ]
     )
     assert build_path(r, name="ahmad") == "/user/ahmad"
@@ -60,7 +64,7 @@ def test_valid_float():
         parts=[
             {"isreg": False, "value": ""},
             {"isreg": False, "value": "user"},
-            {"isreg": True, "name": "age", "re": path_converters["float"]},
+            {"isreg": True, "name": "age", "re": path_converters["float"][0]},
         ]
     )
     assert build_path(r, age="10.5") == "/user/10.5"
@@ -71,9 +75,9 @@ def test_valid_all():
         parts=[
             {"isreg": False, "value": ""},
             {"isreg": False, "value": "user"},
-            {"isreg": True, "name": "id", "re": path_converters["int"]},
-            {"isreg": True, "name": "name", "re": path_converters["string"]},
-            {"isreg": True, "name": "age", "re": path_converters["float"]},
+            {"isreg": True, "name": "id", "re": path_converters["int"][0]},
+            {"isreg": True, "name": "name", "re": path_converters["string"][0]},
+            {"isreg": True, "name": "age", "re": path_converters["float"][0]},
         ]
     )
     assert build_path(r, id=5, age="10.5", name="ahmad") == "/user/5/ahmad/10.5"
@@ -84,21 +88,21 @@ def test_inadequate_kwargs():
         parts=[
             {"isreg": False, "value": ""},
             {"isreg": False, "value": "user"},
-            {"isreg": True, "name": "id", "re": path_converters["int"]},
+            {"isreg": True, "name": "id", "re": path_converters["int"][0]},
         ]
     )
     r2 = Route(
         parts=[
             {"isreg": False, "value": ""},
             {"isreg": False, "value": "user"},
-            {"isreg": True, "name": "age", "re": path_converters["float"]},
+            {"isreg": True, "name": "age", "re": path_converters["float"][0]},
         ]
     )
     r3 = Route(
         parts=[
             {"isreg": False, "value": ""},
             {"isreg": False, "value": "user"},
-            {"isreg": True, "name": "name", "re": path_converters["string"]},
+            {"isreg": True, "name": "name", "re": path_converters["string"][0]},
         ]
     )
     with pytest.raises(Exception) as e:
@@ -114,7 +118,7 @@ def test_part_none_name():
         parts=[
             {"isreg": False, "value": ""},
             {"isreg": False, "value": "user"},
-            {"isreg": True, "re": path_converters["int"]},
+            {"isreg": True, "re": path_converters["int"][0]},
         ]
     )
     with pytest.raises(Exception) as e:
@@ -126,7 +130,7 @@ def test_part_not_matched():
         parts=[
             {"isreg": False, "value": ""},
             {"isreg": False, "value": "user"},
-            {"isreg": True, "name": "id", "re": path_converters["int"]},
+            {"isreg": True, "name": "id", "re": path_converters["int"][0]},
         ]
     )
     assert build_path(r1, id=5) == "/user/5"
