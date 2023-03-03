@@ -420,7 +420,7 @@ class Qor(BaseApp):
         name: str,
         type: Literal["header", "cookie"],
         value: str,
-        redirect_url: str = "/",
+        redirect_url: str = None,
     ):
         """register function as auth route using the provided name
 
@@ -432,46 +432,33 @@ class Qor(BaseApp):
         """
 
         def decorator(func):
-            self._auths[name] = {
-                "type": type,
-                "value": value,
-                "redirect": redirect_url,
-                "verify": simple_wrapper(func, self),
-            }
+            if redirect_url:
+                auth = {
+                    "type": type,
+                    "value": value,
+                    "redirect": redirect_url,
+                    "verify": simple_wrapper(func, self),
+                }
+            else:
+                auth = {
+                    "type": type,
+                    "value": value,
+                    "verify": simple_wrapper(func, self),
+                }
+
+            self._auths[name] = auth
 
             return func
 
         return decorator
 
     @_setup_method
-    def header_auth(self, name, value, redirect_url: str = "/"):
-        @functools.wraps()
-        def wrapper(func):
-            self._auths[name] = {
-                "type": "header",
-                "value": value,
-                "redirect": redirect_url,
-                "verify": simple_wrapper(func, self),
-            }
-
-            return func
-
-        return wrapper
+    def header_auth(self, name, value, redirect_url: Optional[str] = None):
+        return self.auth(name, "header", value=value, redirect_url=redirect_url)
 
     @_setup_method
-    def cookie_auth(self, name, value, redirect_url: str = "/"):
-        @functools.wraps
-        def wrapper(func):
-            self._auths[name] = {
-                "type": "cookie",
-                "value": value,
-                "redirect": redirect_url,
-                "verify": simple_wrapper(func, self),
-            }
-
-            return func
-
-        return wrapper
+    def cookie_auth(self, name, value, redirect_url: str = None):
+        return self.auth(name, "cookie", value=value, redirect_url=redirect_url)
 
     def start(self, *args):
         self._before_handler_callbacks = tuple(self._before_handler_callbacks)
