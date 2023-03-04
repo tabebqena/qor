@@ -6,7 +6,7 @@ import qor.constants as constants
 from qor.utils import cached_property, parse_return_value
 
 if TYPE_CHECKING:
-    from qor.app import BaseApp, Qor
+    from qor.app import BaseApp, Qor, Route
 
 
 class default_handler_wrapper:
@@ -22,7 +22,7 @@ class default_handler_wrapper:
     - Tuple[int, list]
     """
 
-    def __init__(self, func, app, route, **kwargs) -> None:
+    def __init__(self, func, app, route: "Route", **kwargs) -> None:
         self.func = func
         self.app: "Qor" = app
         self.route = route
@@ -154,7 +154,6 @@ class default_handler_wrapper:
                 return
 
         except Exception as e:
-            print(e)
             self.__run_error_callbacks(
                 qor_request,
                 context,
@@ -311,7 +310,7 @@ class Request:
 
     @cached_property
     def content_type(self) -> str:
-        return self.request_header("Content-Type")
+        return self.request_header("Content-Type") or ""
 
     @cached_property
     def mimetype(self):
