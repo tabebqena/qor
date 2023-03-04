@@ -258,6 +258,7 @@ class Request:
         self.app = app
         self._populated = False
         self._json = None
+        self._form = None
         self._response_headers = {}
 
     @cached_property
@@ -309,23 +310,27 @@ class Request:
         return self.connection.addr
 
     @cached_property
-    def content_type(self):
+    def content_type(self) -> str:
         return self.request_header("Content-Type")
 
     @cached_property
+    def mimetype(self):
+        return self.content_type.split(";")[0].strip()
+
+    @cached_property
     def is_form(self):
-        return self.content_type in (
+        return self.mimetype in (
             "multipart/form-data",
             "application/x-www-form-urlencoded",
         )
 
     @cached_property
     def is_multipart(self):
-        return self.content_type == "application/x-www-form-urlencoded"
+        return self.mimetype == "multipart/form-data"
 
     @cached_property
     def is_json(self):
-        return self.content_type == "application/json"
+        return self.mimetype == "application/json"
 
     def cookie(self, name) -> Optional[str]:
         """Returns the cookie value for a given name.
@@ -364,6 +369,7 @@ class Request:
             if id != None:
                 # got an id from somewhere
         """
+        self.populate()
         return self.request.argument(name)
 
     def body_read(self, length: int = 1024) -> Tuple[int, str]:
@@ -425,17 +431,23 @@ class Request:
         self.populate()
         return self._json
 
+    @cached_property
+    def form(self):
+        self.populate()
+        return self._form
+
     def populate(self):
         """popultate request according to its mime type"""
         if self._populated:
             return
-        if self.is_form:
-            if self.is_multipart:
-                return self.populate_multipart()
-            else:
-                return self.populate_post()
+        self.populate_get()
+        if self.is_multipart:
+            self.populate_multipart()
+            self._form = self.body
+        elif self.is_form:
+            self.populate_post()
+            self._form = self.body
         elif self.is_json:
-            print(self.body)
             self._json = json.loads(self.body)
 
     def populate_get(self) -> None:
@@ -457,17 +469,17 @@ class Request:
 
         Returns
         Nothing"""
-        self.request.populate_post()
+        return self.request.populate_post()
 
     def populate_multipart(self) -> None:
-        """Synopsis
-        req.populate_multipart()
+        """Synopsis   req.populate_multipart()
         Description
         Instructs Kore to go ahead and parse the incoming body as content-type multipart/form-data and validate parameters according to the configured params {} blocks in the configuration.
 
         Returns
         Nothing"""
-        self.request.populate_multipart()
+        print("poulate multi")
+        return self.request.populate_multi()
 
     def populate_cookies(self) -> None:
         """Synopsis
@@ -652,3 +664,16 @@ class Context:
         self.response_data = None
         self.return_value = None
         self.kwargs = kwargs
+
+    def render_template(self, template_name, *args, **kwargs):
+        kwargs.update(
+            {
+                "context": self,
+                "app": self.app,
+                "request": self.request,
+                "g": self.g,
+                "context_kwargs": self.kwargs,
+                "reverse": self.app.reverse,
+            }
+        )
+        return self.app._render_template(template_name, *args, **kwargs)
