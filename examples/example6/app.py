@@ -14,14 +14,6 @@ app = Qor(import_name=__name__)
 database = BlogDatabase(os.path.join(os.path.dirname(__file__), "db.json"))
 
 
-# @app.context_processor
-# def popular_posts():
-#     _sorted = [
-#         v for v in sorted(database.items(), key=lambda post: post["seen"])
-#     ]
-#     return {"popular_posts": _sorted[:3]}
-
-
 @app.get("/posts", name="posts")
 def posts_view(request: "Request", context: "Context", **kwargs):
     return context.render_template("index.html", posts=database.posts)
