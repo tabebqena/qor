@@ -566,6 +566,11 @@ class Request:
         """
         self.request.websocket_handshake(onconnect, onmsg, ondisconnect)
 
+    def redirect(self, url, perminant=True):
+        """return redirect resonse"""
+        self.response_header("Location", url)
+        return 302 if perminant else 301, b""
+
 
 class KoreDomain:
     def __init__(
