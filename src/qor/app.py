@@ -1,4 +1,5 @@
 import functools
+import os
 import socket
 import traceback
 from importlib import import_module
@@ -9,6 +10,7 @@ from typing import (
     Iterable,
     Literal,
     Optional,
+    Type,
     Union,
 )
 
@@ -17,7 +19,8 @@ import click
 import qor.constants as constants
 from qor.config import BaseConfig
 from qor.router import Route, Router
-from qor.utils import import_object_from_module
+from qor.templates import JinjaAdapter
+from qor.utils import get_path, import_object_from_module
 from qor.wrappers import (
     Context,
     Request,
@@ -249,16 +252,24 @@ class Qor(BaseApp):
     context_class = Context
     # THe request class, It is used to wrap the kore requests.
     request_class = Request
+    default_template_paths = ["templates"]
 
     def __init__(
         self,
         name="",
+        import_name=None,
         config: dict = {},
         router: Union[Router, str] = None,
+        template_adapter=None,
         template_adapter_class=None,
+        context_processors=[],
+        **kwargs,
     ) -> None:
         self.name = name
+        self.import_name = import_name
         self.config = BaseConfig(**config)
+        if import_name and not self.config.get("root_path", None):
+            self.config["root_path"] = os.path.abspath(get_path(import_name))
         self._domains: Dict[str, "KoreDomain"] = {}
         self._default_domain = None
         if not router:
@@ -289,9 +300,11 @@ class Qor(BaseApp):
         self._app_ready_callbacks = []
         self._error_handlers = []
         self._setup_finished = False
-        self.template_adapter: Optional[BaseTemplateAdapter] = None
-        if template_adapter_class:
-            self.template_adapter = template_adapter_class(self)
+        self._template_adapter: Optional[BaseTemplateAdapter] = template_adapter
+        self._template_adapter_class: Optional[Type] = (
+            template_adapter_class or JinjaAdapter
+        )
+
         self.callbacks_map = {
             "pre_config": self._pre_configure_callbacks,
             "post_config": self._post_configure_callbacks,
@@ -300,6 +313,9 @@ class Qor(BaseApp):
             "after_handler": self._after_handler_callbacks,
             "error_handler": self._error_handlers,
         }
+
+        self._context_processors = context_processors
+        self._extra_kwargs = kwargs
 
     def configure(self, args) -> None:
         """called by `kore` server to configure itself.
@@ -747,10 +763,24 @@ class Qor(BaseApp):
 
         return wrapper
 
-    def render_template(self, template_name, *args, **kwargs):
-        if self.template_adapter:
-            return self.template_adapter.render(template_name, *args, **kwargs)
-        raise Exception("You didn't set tempalteb adapter")
+    def context_processor(self, func):
+        def wrapper(func):
+            self._context_processors.append(func)
+            return func
+
+        return wrapper
+
+    @property
+    def template_adapter(self) -> "BaseTemplateAdapter":
+        if self._template_adapter:
+            return self._template_adapter
+        self._template_adapter = self._template_adapter_class(self)
+        return self._template_adapter
+
+    def _render_template(self, template_name, *args, **kwargs):
+        for pro in self._context_processors:
+            kwargs.update(pro())
+        return self.template_adapter.render(template_name, *args, **kwargs)
 
     def reverse(self, name: str, **kwargs) -> Optional[str]:
         """return the url for route name using the provided kwargs
