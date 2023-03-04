@@ -72,32 +72,5 @@ def delete_post(request: "Request", id, context, **kwargs):
     return request.redirect(context.app.reverse("posts"))
 
 
-# # @app.route("/posts/<id:int>", methods=["get", "post", "delete"], name="post")
-# # def single_post(request: Request, post_id, **kwargs):
-# #     if post_id not in posts_database:
-# #         return 404, {"message": "Not Found"}
-# #     if request.method == "get":
-# #         return posts_database[post_id]
-
-# #     if request.method == "post":
-# #         new_post_data = request.json
-# #         original_data = posts_database.get(post_id)
-# #         if new_post_data:
-# #             posts_database[post_id] = dict(
-# #                 title=new_post_data.get("title") or original_data.get("title"),
-# #                 content=new_post_data.get("content")
-# #                 or original_data.get("title"),
-# #             )
-# #             return {
-# #                 "message": "updated successfully",
-# #                 "url": request.app.router.reverse("post", id=post_id),
-# #             }
-# #         return 400, "request error"
-
-# #     elif request.method == "delete":
-# #         del posts_database[post_id]
-# #         return 200, {"message": "success"}
-
-
 # the app name should be `koreapp` (rquired by kore)
 koreapp = app
