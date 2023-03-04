@@ -31,7 +31,7 @@ def mult(request, first, second, **kwargs):
 
 
 @koreapp.route("/info", methods=["get", "post"])
-def mult(request: Request, **kwargs):
+def info(request: Request, **kwargs):
     return {
         "address": request.client_address,
         "host": request.host,
