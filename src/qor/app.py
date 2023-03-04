@@ -749,9 +749,9 @@ class Qor(BaseApp):
 
         return wrapper
 
-    def error_handler(self, exc_or_status):
+    def error_handler(self, error):
         def wrapper(func):
-            self.callback("error_handler")(func, exc_or_status=exc_or_status)
+            self.callback("error_handler")(func, error=error)
             return func
 
         return wrapper

@@ -65,7 +65,10 @@ class default_handler_wrapper:
     ):
         after_handler_callbacks = self.app._after_handler_callbacks
         for cb in after_handler_callbacks:
-            context.return_value = cb(request, *args, context=context, **kwargs)
+            rv = cb(request, *args, context=context, **kwargs)
+            if rv is not None:
+                context.return_value = rv
+                return
 
     def __run_error_callbacks(
         self,
@@ -80,19 +83,20 @@ class default_handler_wrapper:
         is_exc = isinstance(status_or_exc, Exception)
 
         if is_int:
-            for _status_or_exc, cb in _error_handlers:
-                if (
-                    isinstance(_status_or_exc, int)
-                    and _status_or_exc == status_or_exc
-                ):
+            for error_handler in _error_handlers:
+                error = error_handler.get("kwargs", {}).get("error")
+                cb = error_handler.get("func", None)
+                if isinstance(error, int) and error == status_or_exc:
                     error_cb_rv = cb(request, *args, context=context, **kwargs)
                     if error_cb_rv is not None:
                         context.return_value = error_cb_rv
                         return
         elif is_exc:
-            for _status_or_exc, cb in _error_handlers:
-                if isclass(_status_or_exc) and issubclass(
-                    status_or_exc, _status_or_exc
+            for error_handler in _error_handlers:
+                error = error_handler.get("kwargs", {}).get("error")
+                cb = error_handler.get("func", None)
+                if isclass(error) and issubclass(
+                    status_or_exc.__class__, error
                 ):
                     error_cb_rv = cb(request, *args, context=context, **kwargs)
                     if error_cb_rv is not None:
@@ -136,13 +140,7 @@ class default_handler_wrapper:
             context.response_status = status
             context.response_data = data
 
-            if status == 200:
-                # run th eafter_handler callbacks if there is no error
-                self.__run_after_handler(qor_request, context, *args, **kwargs)
-                self.send_response(context, *args, **kwargs)
-                return
-
-            else:
+            if status >= 400:
                 self.__run_error_callbacks(
                     qor_request,
                     context,
@@ -150,6 +148,12 @@ class default_handler_wrapper:
                     *args,
                     **kwargs,
                 )
+                self.send_response(context, *args, **kwargs)
+                return
+
+            else:
+                # run th eafter_handler callbacks if there is no error
+                self.__run_after_handler(qor_request, context, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
 
@@ -477,7 +481,6 @@ class Request:
 
         Returns
         Nothing"""
-        print("poulate multi")
         return self.request.populate_multi()
 
     def populate_cookies(self) -> None:
@@ -667,6 +670,7 @@ class Context:
         self.response_status = None
         self.response_data = None
         self.return_value = None
+        self.route: "Route" = kwargs.get("route")
         self.kwargs = kwargs
 
     def render_template(self, template_name, *args, **kwargs):
