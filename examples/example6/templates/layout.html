@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible"
+              content="IE=edge">
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0">
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: Arial;
+                padding: 20px;
+                background: #f1f1f1;
+                min-height: calc(100vh);
+            }
+
+            /* Header/Blog Title */
+            .header {
+                padding: 30px;
+                font-size: 40px;
+                text-align: center;
+                background: white;
+            }
+
+            /* Create two unequal columns that floats next to each other */
+            /* Left column */
+            .leftcolumn {
+                float: left;
+                width: 75%;
+            }
+
+            /* Right column */
+            .rightcolumn {
+                float: right;
+                width: 25%;
+                padding-left: 20px;
+            }
+
+            /* Fake image */
+            .fakeimg {
+                background-color: #aaa;
+                width: 100%;
+                padding: 20px;
+            }
+
+            /* Add a card effect for articles */
+            .card {
+                background-color: white;
+                padding: 20px;
+                margin-top: 20px;
+            }
+
+            /* Clear floats after the columns */
+            .row:after {
+                content: "";
+                display: table;
+                clear: both;
+            }
+
+            /* Footer */
+            .footer {
+                padding: 20px;
+                text-align: center;
+                background: #ddd;
+                margin-top: 20px;
+                bottom: 0px;
+                position: relative;
+            }
+
+            /* Responsive layout - when the screen is less than 800px wide, make the two columns stack on top of each other instead of next to each other */
+            @media screen and (max-width: 800px) {
+
+                .leftcolumn,
+                .rightcolumn {
+                    width: 100%;
+                    padding: 0;
+                }
+            }
+
+            .btn {
+                background-color: #4CAF50;
+                /* Green */
+                border: none;
+                color: white;
+                margin: 12px;
+                padding: 15px 32px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+            }
+
+            input[type=text],
+            select {
+                width: 100%;
+                padding: 12px 20px;
+                margin: 8px 0;
+                display: inline-block;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                box-sizing: border-box;
+            }
+
+            input[type=submit] {
+                width: 100%;
+                background-color: #4CAF50;
+                color: white;
+                padding: 14px 20px;
+                margin: 8px 0;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+
+
+            textarea {
+                width: 100%;
+                padding: 14px 20px;
+                margin: 8px 0;
+
+                border-radius: 4px;
+            }
+
+            input[type=submit]:hover {
+                background-color: #45a049;
+            }
+
+            div {
+                border-radius: 5px;
+                background-color: #f2f2f2;
+                padding: 20px;
+            }
+        </style>
+        <title>qor blog</title>
+    </head>
+    <body>
+        <div class="header">
+            <h2>{% block header %}
+                Qor Blog
+                {% endblock %}
+            </h2>
+        </div>
+        <div class="row">
+            <div class="leftcolumn">
+                {%  block content %}
+
+                {% endblock %}
+            </div>
+            <div class="rightcolumn">
+                <div>
+                    <a class="btn"
+                       style="width: 50%;"
+                       href="{{ reverse ('posts')}}">Home</a>
+                    <a class="btn"
+                       style="width: 50%;"
+                       href="{{ reverse ('post_create')}}">create post</a>
+                </div>
+                <div class="card">
+                    <h3>Popular Post</h3>
+                    {% for post in popular_posts %}
+                    <a href="{{ reverse ('post_detail', id=post.id)  }}">
+                        <div class="fakeimg">{{  post.title  }}</div>
+                    </a><br>
+                    {% endfor %}
+
+                </div>
+
+            </div>
+        </div>
+
+        <div class="footer">
+            <h2>Footer</h2>
+        </div>
+
+    </body>
+</html>

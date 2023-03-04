@@ -1,0 +1,25 @@
+{% extends 'layout.html' %}
+
+
+{% block content %}
+<form method="post">
+    <div>
+        <label for="id_title">title</label>
+        <input class="input"
+               type="text"
+               id="id_title"
+               name="title" />
+    </div>
+    <div>
+        <label for="id_content">content</label>
+        <textarea id="id_content"
+                  rows="12"
+                  name="content"></textarea>
+    </div>
+    <div>
+        <input type="submit"
+               value="submit" />
+    </div>
+
+</form>
+{% endblock  %}

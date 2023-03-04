@@ -1,0 +1,22 @@
+{% extends 'layout.html' %}
+
+
+{% block content %}
+{%  for  post in posts.values() %}
+<div class="card">
+    <div style="display: flex;">
+        <span style="flex: 0 0 65%;">
+            <h2>{{post.title}}</h2>
+        </span>
+        <span style="flex:1;">
+            <h5>{{post.date}}</h5>
+        </span>
+    </div>
+
+    <div style="display: flex; justify-content: end;">
+        <a href='{{ reverse("post_detail", id=post["id"] ) }}'>detail</a>
+    </div>
+</div>
+
+{% endfor  %}
+{% endblock  %}

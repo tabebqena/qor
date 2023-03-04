@@ -1,0 +1,31 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<div>
+    <div class="card">
+        <div style="display: flex;">
+            <span style="flex: 0 0 65%;">
+                <h2>{{post.title}}</h2>
+            </span>
+            <span style="flex:1;">
+                <h5>{{post.date}}</h5>
+            </span>
+        </div>
+        <hr>
+        <div class="card">
+            {{post.content}}
+        </div>
+        <hr>
+        <div class="card"
+             style="display: flex;justify-content: end;">
+            <form method="post"
+                  action="{{ reverse('post_delete', id=post.id) }}">
+                <button class="btn "
+                        type="submit"
+                        style="background-color: red; cursor: pointer;">Delete</button>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
