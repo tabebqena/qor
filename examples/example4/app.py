@@ -11,7 +11,11 @@ admin_tokens = {"my-admin-token": "admin1"}
 user_tokens = {"token": "user1"}
 
 
-@app.auth("user", "header", "X-AuthToken")
+def got_it(*args, **kwargs):
+    print(args, kwargs)
+
+
+@app.auth("user", "header", "X-AuthToken", redirect_url=got_it)
 def is_user(request, auth_value, **kwargs):
     if auth_value in user_tokens:
         print(f"welcome {user_tokens[auth_value]}")
