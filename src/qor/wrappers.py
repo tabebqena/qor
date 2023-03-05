@@ -15,8 +15,7 @@ class BaseRequest:
     `get_qor_context` method
     """
 
-    def set_context(self, context: "Context"):
-        self.context = context
+    ...
 
 
 class BaseWrapper:
@@ -33,30 +32,29 @@ class BaseWrapper:
         # unknown request type
         #
 
-    def get_qor_objects(self, request, *args, **kwargs):
-        """this method will make sure to return qor `Context`, `Request` objects
+    def get_qor_request(self, request, *args, **kwargs) -> "Request":
+        """this method will make sure to return qor `Request` objects
         possibility of request argument:
         - qor request   >> return it
         - kore request  >>
-        check if has context member or not, if has: return its memeber  & its request
+        check if has _request member or not, if has: return its memeber.
+
         if all the above failed, we are sure now that this a kore request object, hits
-        Qor application for the furst time, So we should create `Request`, `Context` object
+        Qor application for the furst time, So we should create `Request` object
         and create refrence for the for further calling.
 
-        The purpose of this approach is to craete the `Context` object one time only for each request & make use of
-        `kore` handler that are not aware of `Context` object.
+        The purpose of this approach is to create the `Request` object one time only for each request & make use of
+        `kore` handler that are not aware of our `Request` object.
         """
         if isinstance(request, BaseRequest):
-            return request.context, request
-        ctx = getattr(request, "context", None)
-        if ctx:
-            return ctx, ctx.request
+            return request
+        _request = getattr(request, "_request", None)
+        if _request:
+            return _request
 
         qor_request = self.app.wrap_request(request, *args, **kwargs)
-        ctx = self.app.make_context(qor_request, *args, **kwargs)
-        qor_request.set_context(ctx)
-        setattr(request, "context", ctx)
-        return ctx, qor_request
+        setattr(request, "_request", qor_request)
+        return qor_request
 
 
 class default_handler_wrapper(BaseWrapper):
@@ -93,34 +91,31 @@ class default_handler_wrapper(BaseWrapper):
     def __run_before_handler(
         self,
         request: "Request",
-        context: "Context",
         *args,
         **kwargs,
     ):
         before_handler_callbacks = self.app._before_handler_callbacks
         for cb in before_handler_callbacks:
-            rv = cb(request, *args, context=context, **kwargs)
+            rv = cb(request, *args, **kwargs)
             if rv is not None:
                 return rv
 
     def __run_after_handler(
         self,
         request: "Request",
-        context: "Context",
         *args,
         **kwargs,
     ):
         after_handler_callbacks = self.app._after_handler_callbacks
         for cb in after_handler_callbacks:
-            rv = cb(request, *args, context=context, **kwargs)
+            rv = cb(request, *args, **kwargs)
             if rv is not None:
-                context.return_value = rv
+                request.return_value = rv
                 return
 
     def __run_error_callbacks(
         self,
         request: "Request",
-        context: "Context",
         status_or_exc: Union[int, Exception],
         *args,
         **kwargs,
@@ -134,9 +129,9 @@ class default_handler_wrapper(BaseWrapper):
                 error = error_handler.get("kwargs", {}).get("error")
                 cb = error_handler.get("func", None)
                 if isinstance(error, int) and error == status_or_exc:
-                    error_cb_rv = cb(request, *args, context=context, **kwargs)
+                    error_cb_rv = cb(request, *args, **kwargs)
                     if error_cb_rv is not None:
-                        context.return_value = error_cb_rv
+                        request.return_value = error_cb_rv
                         return
         elif is_exc:
             for error_handler in _error_handlers:
@@ -145,80 +140,67 @@ class default_handler_wrapper(BaseWrapper):
                 if isclass(error) and issubclass(
                     status_or_exc.__class__, error
                 ):
-                    error_cb_rv = cb(request, *args, context=context, **kwargs)
+                    error_cb_rv = cb(request, *args, **kwargs)
                     if error_cb_rv is not None:
-                        context.return_value = error_cb_rv
+                        request.return_value = error_cb_rv
                         return
 
-    def send_response(self, context: "Context", *args, **kwargs):
-        status, data, original_type = parse_return_value(context.return_value)
-        if not context.request.get_response_header("Content-Type"):
+    def send_response(self, request: "Request", *args, **kwargs):
+        status, data, original_type = parse_return_value(request.return_value)
+        if not request.get_response_header("Content-Type"):
             if original_type in (dict, tuple, list):
-                context.request.response_header(
-                    "Content-Type", "application/json"
-                )
+                request.response_header("Content-Type", "application/json")
             else:
-                context.request.response_header("Content-Type", "text/html")
+                request.response_header("Content-Type", "text/html")
 
-        context.request.response(status, data)
+        request.response(status, data)
 
     def __call__(self, kore_request, *args: Any, **kwargs: Any) -> Any:
-        app = self.app
         args = self.__prepare_args(*args)
 
-        # qor_request = app.wrap_request(kore_request)
-        # context = app.make_context(qor_request, route=self.route)
-        context, qor_request = self.get_qor_objects(
-            kore_request, *args, **kwargs
-        )
-        context.set_route(self.route)
+        qor_request = self.get_qor_request(kore_request, *args, **kwargs)
+        qor_request.set_route(self.route)
 
         try:
-            rv = self.__run_before_handler(
-                qor_request, context, *args, **kwargs
-            )
+            rv = self.__run_before_handler(qor_request, *args, **kwargs)
             if rv is not None:
-                context.return_value = rv
-                self.__run_after_handler(qor_request, context, *args, **kwargs)
-                self.send_response(context, *args, **kwargs)
+                qor_request.return_value = rv
+                self.__run_after_handler(qor_request, *args, **kwargs)
+                self.send_response(qor_request, *args, **kwargs)
                 return
             # call the handler function
-            rv = self.func(qor_request, *args, context=context, **kwargs)
-            # quick update context by the rv
-            context.return_value = rv
+            rv = self.func(qor_request, *args, **kwargs)
+            qor_request.return_value = rv
             # try to parse the return value
             status, data, original_type = parse_return_value(rv)
-            # update context
-            context.response_status = status
-            context.response_data = data
+            qor_request.response_status = status
+            qor_request.response_data = data
 
             if status >= 400:
                 self.__run_error_callbacks(
                     qor_request,
-                    context,
                     status,
                     *args,
                     **kwargs,
                 )
-                self.send_response(context, *args, **kwargs)
+                self.send_response(qor_request, *args, **kwargs)
                 return
 
             else:
                 # run th eafter_handler callbacks if there is no error
-                self.__run_after_handler(qor_request, context, *args, **kwargs)
-                self.send_response(context, *args, **kwargs)
+                self.__run_after_handler(qor_request, *args, **kwargs)
+                self.send_response(qor_request, *args, **kwargs)
                 return
 
         except Exception as e:
             self.__run_error_callbacks(
                 qor_request,
-                context,
                 e,
                 *args,
                 **kwargs,
             )
-            if context.return_value:
-                self.send_response(context, *args, **kwargs)
+            if qor_request.return_value:
+                self.send_response(qor_request, *args, **kwargs)
             else:
                 raise
 
@@ -230,8 +212,8 @@ class simple_wrapper(BaseWrapper):
         super().__init__(func=func, app=app, route=route, **kwargs)
 
     def __call__(self, request, *args: Any, **kwargs: Any) -> Any:
-        context, qor_request = self.get_qor_objects(request, *args, **kwargs)
-        return self.func(qor_request, *args, context, **kwargs)
+        qor_request = self.get_qor_request(request, *args, **kwargs)
+        return self.func(qor_request, *args, **kwargs)
 
     def __repr__(self) -> str:
         return f"<Simple Wrapper {self.func.__repr__}>"
@@ -309,13 +291,25 @@ class Request(BaseRequest):
     HTTP_METHOD_OPTIONS = constants.HTTP_METHOD_OPTIONS  # 64
     HTTP_METHOD_PATCH = constants.HTTP_METHOD_PATCH  # 128
 
-    def __init__(self, kore_request, app: "Qor", *args, **kwargs) -> None:
+    def __init__(
+        self, kore_request, app: "Qor", route=None, *args, **kwargs
+    ) -> None:
         self.request = kore_request
         self.app = app
+        self.route = route
+        self.g = {}
+
+        #
+        self.response_status = None
+        self._response_headers = {}
+        self.response_data = None
+        self.return_value = None
+        #
         self._populated = False
         self._json = None
         self._form = None
-        self._response_headers = {}
+        self.args = args
+        self.kwargs = kwargs
 
     @cached_property
     def method(self) -> str:
@@ -626,6 +620,24 @@ class Request(BaseRequest):
         self.response_header("Location", url)
         return 302 if perminant else 301, b""
 
+    def reverse(self, name, **kwargs):
+        return self.app.reverse(name=name, **kwargs)
+
+    def set_route(self, route):
+        self.route = route
+
+    def render_template(self, template_name, *args, **kwargs):
+        kwargs.update(
+            {
+                "app": self.app,
+                "request": self,
+                "g": self.g,
+                "context_kwargs": self.kwargs,
+                "reverse": self.reverse,
+            }
+        )
+        return self.app._render_template(template_name, *args, **kwargs)
+
 
 class KoreDomain:
     def __init__(
@@ -713,31 +725,3 @@ class KoreDomain:
 
         koreapp = FileMap()"""
         self._domain.filemaps(_map)
-
-
-class Context:
-    def __init__(self, app: "Qor", request: "Request", *args, **kwargs) -> None:
-        self.app = app
-        self.request = request
-        self.g = {}
-        self.response_status = None
-        self.response_data = None
-        self.return_value = None
-        self.args = args
-        self.kwargs = kwargs
-
-    def set_route(self, route):
-        self.route = route
-
-    def render_template(self, template_name, *args, **kwargs):
-        kwargs.update(
-            {
-                "context": self,
-                "app": self.app,
-                "request": self.request,
-                "g": self.g,
-                "context_kwargs": self.kwargs,
-                "reverse": self.app.reverse,
-            }
-        )
-        return self.app._render_template(template_name, *args, **kwargs)

@@ -22,7 +22,6 @@ from qor.router import Route, Router
 from qor.templates import JinjaAdapter
 from qor.utils import get_path, import_object_from_module
 from qor.wrappers import (
-    Context,
     Request,
     default_handler_wrapper,
     simple_wrapper,
@@ -248,8 +247,6 @@ class Qor(BaseApp):
     handler_wrapper = default_handler_wrapper
     # designates whether the app is the root app that called by `kore` or it is middleware.
     _root_app = False
-    # The context class, its instances will be the first parameter of all routes and callbacks
-    context_class = Context
     # THe request class, It is used to wrap the kore requests.
     request_class = Request
     default_template_paths = ["templates"]
@@ -482,9 +479,6 @@ class Qor(BaseApp):
             reversed(self._after_handler_callbacks)
         )
         self._register_routes()
-
-    def make_context(self, qor_request: "Request", *args, **kwargs):
-        return Context(self, qor_request, *args, **kwargs)
 
     def wrap_request(self, kore_request, *args, **kwargs):
         return self.request_class(kore_request, self, *args, **kwargs)

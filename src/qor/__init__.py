@@ -19,7 +19,6 @@ __all__ = [
     "to_bytes",
     "to_string",
     "Router",
-    "Context",
 ]
 from qor import constants
 from qor.app import BaseApp, Qor
@@ -33,7 +32,7 @@ from qor.utils import (
     to_string,
 )
 from qor.watcher import Watcher
-from qor.wrappers import Connection, File, KoreDomain, Request, Context
+from qor.wrappers import Connection, File, KoreDomain, Request
 from qor.wsgi import (
     KoreServerHandler,
     KoreWSGIRequestHandler,
