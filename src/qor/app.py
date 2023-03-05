@@ -20,12 +20,8 @@ import qor.constants as constants
 from qor.config import BaseConfig
 from qor.router import Route, Router
 from qor.templates import JinjaAdapter
-from qor.utils import get_path, import_object_from_module
-from qor.wrappers import (
-    Request,
-    default_handler_wrapper,
-    simple_wrapper,
-)
+from qor.utils import ReturnValueParser, get_path, import_object_from_module
+from qor.wrappers import DefaultHandlerWrapper, Request, simple_wrapper
 
 if TYPE_CHECKING:
     from qor.templates import BaseTemplateAdapter, KoreDomain
@@ -244,11 +240,12 @@ class BaseApp:
 
 
 class Qor(BaseApp):
-    handler_wrapper = default_handler_wrapper
+    default_request_class = Request
+    default_handler_wrapper = DefaultHandlerWrapper
+    default_return_value_parser = ReturnValueParser
     # designates whether the app is the root app that called by `kore` or it is middleware.
     _root_app = False
     # THe request class, It is used to wrap the kore requests.
-    request_class = Request
     default_template_paths = ["templates"]
 
     def __init__(
@@ -260,6 +257,9 @@ class Qor(BaseApp):
         template_adapter=None,
         template_adapter_class=None,
         context_processors=[],
+        request_class=None,
+        handler_wrapper=None,
+        return_value_parser=None,
         **kwargs,
     ) -> None:
         self.name = name
@@ -312,6 +312,11 @@ class Qor(BaseApp):
         }
 
         self._context_processors = context_processors
+        self.request_class = request_class or self.default_request_class
+        self.handler_wrapper = handler_wrapper or self.default_handler_wrapper
+        self.return_value_parser = (
+            return_value_parser or self.default_return_value_parser
+        )(self)
         self._extra_kwargs = kwargs
 
     def configure(self, args) -> None:
