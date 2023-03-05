@@ -9,7 +9,57 @@ if TYPE_CHECKING:
     from qor.app import BaseApp, Qor, Route
 
 
-class default_handler_wrapper:
+class BaseRequest:
+    """Why this class?
+    To let the user use any request class he want, without breaking
+    `get_qor_context` method
+    """
+
+    def set_context(self, context: "Context"):
+        self.context = context
+
+
+class BaseWrapper:
+    def __init__(
+        self, func: "Callable", app: "Qor", route: "Route", **kwargs
+    ) -> None:
+        self.func = func
+        self.app: "Qor" = app
+        self.route = route
+        self.kwargs = kwargs
+
+    def __call__(self, request, *args: Any, **kwargs: Any) -> Any:
+        pass
+        # unknown request type
+        #
+
+    def get_qor_objects(self, request, *args, **kwargs):
+        """this method will make sure to return qor `Context`, `Request` objects
+        possibility of request argument:
+        - qor request   >> return it
+        - kore request  >>
+        check if has context member or not, if has: return its memeber  & its request
+        if all the above failed, we are sure now that this a kore request object, hits
+        Qor application for the furst time, So we should create `Request`, `Context` object
+        and create refrence for the for further calling.
+
+        The purpose of this approach is to craete the `Context` object one time only for each request & make use of
+        `kore` handler that are not aware of `Context` object.
+        """
+        if isinstance(request, BaseRequest):
+            return request.context, request
+        ctx = getattr(request, "context", None)
+        if ctx:
+            return ctx, ctx.request
+
+        qor_request = self.app.wrap_request(request, *args, **kwargs)
+        ctx = self.app.make_context(qor_request, *args, **kwargs)
+        qor_request.set_context(ctx)
+        setattr(request, "context", ctx)
+        return ctx, qor_request
+
+
+class default_handler_wrapper(BaseWrapper):
     """This is the default wrapper for all handlers.
     By using it the handler will recieve, `Request` object and can return any of:
     - bytes
@@ -23,10 +73,7 @@ class default_handler_wrapper:
     """
 
     def __init__(self, func, app, route: "Route", **kwargs) -> None:
-        self.func = func
-        self.app: "Qor" = app
-        self.route = route
-        self.kwargs = kwargs
+        super().__init__(func=func, app=app, route=route, **kwargs)
         self.re_parts = []
         for part in self.route.parts:
             if part.get("isreg", False):
@@ -118,9 +165,13 @@ class default_handler_wrapper:
     def __call__(self, kore_request, *args: Any, **kwargs: Any) -> Any:
         app = self.app
         args = self.__prepare_args(*args)
-        qor_request = app.wrap_request(kore_request)
 
-        context = app.make_context(qor_request, route=self.route)
+        # qor_request = app.wrap_request(kore_request)
+        # context = app.make_context(qor_request, route=self.route)
+        context, qor_request = self.get_qor_objects(
+            kore_request, *args, **kwargs
+        )
+
         try:
             rv = self.__run_before_handler(
                 qor_request, context, *args, **kwargs
@@ -170,15 +221,29 @@ class default_handler_wrapper:
             else:
                 raise
 
+        except Exception as e:
+            self.__run_error_callbacks(
+                qor_request,
+                context,
+                e,
+                *args,
+                **kwargs,
+            )
+            if context.return_value:
+                self.send_response(context, *args, **kwargs)
+            else:
+                raise
 
-class simple_wrapper:
-    def __init__(self, func, app, **kwargs) -> None:
-        self.func = func
-        self.app: "Qor" = app
-        self.kwargs = kwargs
 
-    def __call__(self, request: "Request", *args: Any, **kwds: Any) -> Any:
-        return self.func(request, *args, **kwds)
+class simple_wrapper(BaseWrapper):
+    def __init__(
+        self, func: "Callable", app: "Qor", route=None, **kwargs
+    ) -> None:
+        super().__init__(func=func, app=app, route=route, **kwargs)
+
+    def __call__(self, request, *args: Any, **kwargs: Any) -> Any:
+        context, qor_request = self.get_qor_objects(request, *args, **kwargs)
+        return self.func(qor_request, *args, context, **kwargs)
 
     def __repr__(self) -> str:
         return f"<Simple Wrapper {self.func.__repr__}>"
@@ -247,7 +312,7 @@ class Connection:
         ...
 
 
-class Request:
+class Request(BaseRequest):
     HTTP_METHOD_GET = constants.HTTP_METHOD_GET  # 1
     HTTP_METHOD_PUT = constants.HTTP_METHOD_PUT  # 4
     HTTP_METHOD_HEAD = constants.HTTP_METHOD_HEAD  # 32
@@ -663,7 +728,7 @@ class KoreDomain:
 
 
 class Context:
-    def __init__(self, app: "Qor", request: "Request", **kwargs) -> None:
+    def __init__(self, app: "Qor", request: "Request", *args, **kwargs) -> None:
         self.app = app
         self.request = request
         self.g = {}
@@ -671,6 +736,7 @@ class Context:
         self.response_data = None
         self.return_value = None
         self.route: "Route" = kwargs.get("route")
+        self.args = args
         self.kwargs = kwargs
 
     def render_template(self, template_name, *args, **kwargs):
