@@ -296,7 +296,7 @@ python-versions = ">=3.7"
 name = "jinja2"
 version = "3.1.2"
 description = "A very fast and expressive template engine."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -334,7 +334,7 @@ Werkzeug = ">=2.0.0"
 name = "markupsafe"
 version = "2.1.2"
 description = "Safely add untrusted strings to HTML/XML markup."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -759,7 +759,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "5bb7a511c853f34a4efc8193a638680ff302d7f88f53401f7ce211214712a377"
+content-hash = "0e9a6f4c110ce20e92dbd63d121f0c11ab90bec7ab6b4f287fc641b7c0d10c4b"
 
 [metadata.files]
 alabaster = [
