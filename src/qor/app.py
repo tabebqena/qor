@@ -483,11 +483,11 @@ class Qor(BaseApp):
         )
         self._register_routes()
 
-    def make_context(self, qor_request, **kwargs):
-        return Context(app=self, request=qor_request, **kwargs)
+    def make_context(self, qor_request: "Request", *args, **kwargs):
+        return Context(self, qor_request, *args, **kwargs)
 
-    def wrap_request(self, kore_request, **kwargs):
-        return self.request_class(kore_request, self, **kwargs)
+    def wrap_request(self, kore_request, *args, **kwargs):
+        return self.request_class(kore_request, self, *args, **kwargs)
 
     def _register_routes(self):
         """
