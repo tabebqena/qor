@@ -6,9 +6,12 @@ import os
 import pkgutil
 import sys
 from importlib.machinery import ModuleSpec
-from typing import Any, Tuple, cast
+from typing import TYPE_CHECKING, Any, Tuple, cast
 
 from qor.constants import METHOD_CODES
+
+if TYPE_CHECKING:
+    from qor import Qor
 
 
 def import_module_by_path(path: str, module_name: str):
@@ -84,6 +87,37 @@ class cached_property(object):
         setattr(instance, self._attr_name, attr)
 
         return attr
+
+
+class ReturnValueParser:
+    def __init__(self, app: "Qor") -> None:
+        self.app = app
+
+    def __call__(self, return_value: Any, *args, **kwargs) -> Any:
+        status = None
+        value_bytes = return_value
+        original = None
+        exception = None
+
+        if isinstance(return_value, tuple) and len(return_value) == 2:
+            try:
+                status = int(return_value[0])
+                value_bytes = to_bytes(return_value[1])
+                original = type(return_value[1])
+            except Exception as e:
+                logging.error(e)
+                exception = e
+        else:
+            try:
+                status = 200
+                value_bytes = to_bytes(return_value)
+                original = type(return_value)
+            except Exception as e:
+                logging.error(e)
+                exception = e
+        if exception is None:
+            return status, value_bytes, original
+        raise Exception("can't parse value. ") from (exception)
 
 
 def parse_return_value(value) -> Tuple[int, bytes, Any]:

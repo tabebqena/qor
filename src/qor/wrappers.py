@@ -3,7 +3,7 @@ from inspect import isclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
 
 import qor.constants as constants
-from qor.utils import cached_property, parse_return_value
+from qor.utils import cached_property
 
 if TYPE_CHECKING:
     from qor.app import BaseApp, Qor, Route
@@ -57,7 +57,7 @@ class BaseWrapper:
         return qor_request
 
 
-class default_handler_wrapper(BaseWrapper):
+class DefaultHandlerWrapper(BaseWrapper):
     """This is the default wrapper for all handlers.
     By using it the handler will recieve, `Request` object and can return any of:
     - bytes
@@ -72,6 +72,7 @@ class default_handler_wrapper(BaseWrapper):
 
     def __init__(self, func, app, route: "Route", **kwargs) -> None:
         super().__init__(func=func, app=app, route=route, **kwargs)
+        self.return_value_parser = app.return_value_parser
         self.re_parts = []
         for part in self.route.parts:
             if part.get("isreg", False):
@@ -146,7 +147,9 @@ class default_handler_wrapper(BaseWrapper):
                         return
 
     def send_response(self, request: "Request", *args, **kwargs):
-        status, data, original_type = parse_return_value(request.return_value)
+        status, data, original_type = self.return_value_parser(
+            request.return_value, self, self.app, request, *args, **kwargs
+        )
         if not request.get_response_header("Content-Type"):
             if original_type in (dict, tuple, list):
                 request.response_header("Content-Type", "application/json")
@@ -172,7 +175,9 @@ class default_handler_wrapper(BaseWrapper):
             rv = self.func(qor_request, *args, **kwargs)
             qor_request.return_value = rv
             # try to parse the return value
-            status, data, original_type = parse_return_value(rv)
+            status, data, original_type = self.return_value_parser(
+                rv, self, self.app, qor_request, *args, **kwargs
+            )
             qor_request.response_status = status
             qor_request.response_data = data
 
