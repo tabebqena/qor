@@ -1,7 +1,7 @@
 import json
 import os
 
-POSTS_PATH = "../posts.json"
+POSTS_PATH = os.path.join(os.path.dirname(__file__), "db.json")
 
 
 class PostDatabase(dict):

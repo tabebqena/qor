@@ -59,7 +59,6 @@ class BlogDatabase(dict):
         self.save()
 
     def delete_post(self, id):
-        print(self.posts)
         post = self.posts.get(str(id), None)
         if not post:
             raise Exception(f"post not found with id {id}")

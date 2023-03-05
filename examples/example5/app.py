@@ -14,7 +14,7 @@ app = Qor()
 @app.post("/posts")
 def posts_view(request: "Request", **kwargs):
     if request.method == "get":
-        return posts_database
+        return dict(posts_database)
     elif request.method == "post":
         post = request.json
         if post:
@@ -37,7 +37,10 @@ def posts_view(request: "Request", **kwargs):
 
 @app.route("/posts/<id:int>", methods=["get", "post", "delete"], name="post")
 def single_post(request: Request, post_id, **kwargs):
-    if post_id not in posts_database:
+    # note that json keys can't be int & post keys
+    # are always converted to string by json lin
+    post_id = str(post_id)
+    if str(post_id) not in posts_database:
         return 404, {"message": "Not Found"}
     if request.method == "get":
         return posts_database[post_id]
@@ -49,13 +52,13 @@ def single_post(request: Request, post_id, **kwargs):
             posts_database[post_id] = dict(
                 title=new_post_data.get("title") or original_data.get("title"),
                 content=new_post_data.get("content")
-                or original_data.get("title"),
+                or original_data.get("content"),
             )
             return {
                 "message": "updated successfully",
                 "url": request.app.router.reverse("post", id=post_id),
             }
-        return 400, "request error"
+        return 400, "request error, You should provide post data"
 
     elif request.method == "delete":
         del posts_database[post_id]

@@ -8,22 +8,23 @@ import os
 
 from db import BlogDatabase
 
-from qor import Context, Qor, Request
+from qor import Qor, Request
 
 app = Qor(import_name=__name__)
 database = BlogDatabase(os.path.join(os.path.dirname(__file__), "db.json"))
 
 
+@app.get("/")
 @app.get("/posts", name="posts")
-def posts_view(request: "Request", context: "Context", **kwargs):
-    return context.render_template("index.html", posts=database.posts)
+def posts_view(request: "Request", **kwargs):
+    return request.render_template("index.html", posts=database.posts)
 
 
 @app.get("/post_detail/<id>", name="post_detail")
-def post_detail(request: "Request", post_id, context: "Context", **kwargs):
+def post_detail(request: "Request", post_id, **kwargs):
     if post_id in database.posts:
         database.increment_post_seen(post_id)
-        return context.render_template(
+        return request.render_template(
             "post_detail.html", post=database.posts.get(post_id)
         )
     return 404, "Post not found"
@@ -31,12 +32,16 @@ def post_detail(request: "Request", post_id, context: "Context", **kwargs):
 
 @app.get("/create", name="post_create")
 @app.post(
-    "/create", name="post_create", params={"title": ".*", "content": ".*"}
+    "/create",
+    name="post_create",
+    params={
+        "title": ".*",
+        "content": ".*",
+    },
 )
-def post_create(request: "Request", context: "Context", **kwargs):
+def post_create(request: "Request", **kwargs):
     if request.method == "get":
-        return context.render_template("create_post.html")
-    request.populate()
+        return request.render_template("create_post.html")
 
     title = request.argument("title")
     content = request.argument("content")
@@ -49,19 +54,19 @@ def post_create(request: "Request", context: "Context", **kwargs):
             content=content,
             date=str(datetime.datetime.now().date()),
         )
-        request.redirect(context.app.reverse("post_detail", id=post_id))
+        return request.redirect(request.app.reverse("post_detail", id=post_id))
 
         # return f"<a href='{url}'>{title}</a>"
     elif not title:
-        return 400, "request error, missed error "
+        return 400, "request error, missed title "
     elif not content:
         return 400, "request error, missed content "
 
 
 @app.post("/delete/<id:int>", name="post_delete")
-def delete_post(request: "Request", id, context, **kwargs):
+def delete_post(request: "Request", id, **kwargs):
     database.delete_post(id)
-    return request.redirect(context.app.reverse("posts"))
+    return request.redirect(request.app.reverse("posts"))
 
 
 # the app name should be `koreapp` (rquired by kore)
