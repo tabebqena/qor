@@ -30,6 +30,7 @@ def post_detail(request: "Request", post_id, **kwargs):
     return 404, "Post not found"
 
 
+# TODO bug-fix: content doesn't accept muli line text
 @app.get("/create", name="post_create")
 @app.post(
     "/create",
