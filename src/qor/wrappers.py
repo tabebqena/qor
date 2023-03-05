@@ -171,6 +171,7 @@ class default_handler_wrapper(BaseWrapper):
         context, qor_request = self.get_qor_objects(
             kore_request, *args, **kwargs
         )
+        context.set_route(self.route)
 
         try:
             rv = self.__run_before_handler(
@@ -207,19 +208,6 @@ class default_handler_wrapper(BaseWrapper):
                 self.__run_after_handler(qor_request, context, *args, **kwargs)
                 self.send_response(context, *args, **kwargs)
                 return
-
-        except Exception as e:
-            self.__run_error_callbacks(
-                qor_request,
-                context,
-                e,
-                *args,
-                **kwargs,
-            )
-            if context.return_value:
-                self.send_response(context, *args, **kwargs)
-            else:
-                raise
 
         except Exception as e:
             self.__run_error_callbacks(
@@ -321,7 +309,7 @@ class Request(BaseRequest):
     HTTP_METHOD_OPTIONS = constants.HTTP_METHOD_OPTIONS  # 64
     HTTP_METHOD_PATCH = constants.HTTP_METHOD_PATCH  # 128
 
-    def __init__(self, kore_request, app: "Qor") -> None:
+    def __init__(self, kore_request, app: "Qor", *args, **kwargs) -> None:
         self.request = kore_request
         self.app = app
         self._populated = False
@@ -735,9 +723,11 @@ class Context:
         self.response_status = None
         self.response_data = None
         self.return_value = None
-        self.route: "Route" = kwargs.get("route")
         self.args = args
         self.kwargs = kwargs
+
+    def set_route(self, route):
+        self.route = route
 
     def render_template(self, template_name, *args, **kwargs):
         kwargs.update(
