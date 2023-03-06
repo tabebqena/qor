@@ -508,6 +508,31 @@ serialization library to convert the data to valid JSON types first.
 There are many serialization libraries that support more complex applications like `marchmallow`.
 
 
+Authentication
+--------------
+
+No surprise, ``kore`` has a builtin authentication system and ``Qor`` implements it in a fine way. To register auth handler, you should use ``qor.Qor.auth``, ``qor.Qor.header_auth`` or ``qor.Qor.cookie_auth`` decorators.
+
+The first srgument is a name you provide to reference this handler later.
+
+.. code-block:: python
+
+   @app.auth("user_only", "header", "X-AuthToken")
+   def is_user(request, auth_value, **kwargs):
+       for user in users:
+           if user.get("token") == auth_value:
+               request.g["user"] = user
+               return True
+       return False
+    
+
+   @app.route("/u", auth_name="user_only")
+   def user_only(request, **kwargs):
+       return f"Welcome {request.g.get('user', {}).get('name')}"
+
+``TODO``: more declaration of the auth system.
+
+
 Sessions
 --------
 
