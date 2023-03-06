@@ -1,10 +1,9 @@
 Welcome to Qor
 ==============
 
-*Qor* is a python web framework on top of `kore` server. 
-**Kore** is a web application platform for writing scalable, concurrent web based processes in C or Python. 
+**Qor** is a python web framework on top of **kore** server which is a web application platform for writing scalable, concurrent web based processes in C or Python. 
 
-**Qor** built to facilitate developing `kore` application.
+**Qor** built to facilitate developing `kore` applications.
 
 
 Installation
@@ -15,28 +14,24 @@ Installation
 .. _kore: https://docs.kore.io/4.2.0/install.html
 
 
-- check `kore` installation:
+- Check `kore` installation:
   
   
   ..  code-block:: bash
 
-    $ kore -h
+    kore -h
+    # This command shouldn't give error and should 
+    # print the help information about the `kore` server.
 
 
-This command should print the help information about the `kore` server.
+- Install `Qor`:
 
 
-- install `Qor`:
+     .. attention:: consider creating virtual enviroment first.
 
+..  code-block:: bash
 
-.. admonition:: NB
-
-    consider creating virtual enviroment first.
-
-
-  ..  code-block:: sh 
-    
-    $ pip install git+https://github.com/tabebqena/qor.git
+    pip install git+https://github.com/tabebqena/qor.git
 
 
 
@@ -44,7 +39,7 @@ A Minimal Application
 ---------------------
 
 
-.. attention:: The following bash commands assume that you are using lunux OS.
+    .. attention:: The following bash commands assume that you are using lunux OS.
 
 
 .. code-block:: sh
@@ -79,9 +74,9 @@ Now, Open the `app.py` file and write the following content in it:
 save the file and type ``qor run`` command in your terminal.
 
 
-.. code-block:: text
+.. code-block:: sh
 
-    $ qor run
+    qor run
      
 
 You should see many lines stating that the `kore` server is running at `http://127.0.0.1:8888`.
@@ -97,33 +92,31 @@ let's analyze it
 
     app = Qor()
 
-*  We create app instance. In this simple example, we pass no arguments, But
-    in real applications, you mostly needs to pass some arguments.
+-  We create application instance. In this simple example, we pass no arguments, But in real applications, you mostly needs to pass some arguments.
 
 .. code-block:: text
 
     @app.route("/")
 
-*  This decorator is used to add route to the application. 
-    The first argument is the path. The `/` path means that the function decorated by this decorator
-    will be executed when the user make request (browser mostly) to the `/` in our domain.
-    if your domain is `www.example.com`, the  `hello_world` method will be executed when the user type 
+-  This decorator is used to add route to the application. 
+    The first argument is the path. The `/` path means that the function decorated by this decorator will be executed when the user make request (browser mostly) to the `/` in our domain.
+    if your domain is `www.example.com`, the ``hello_world`` method will be executed when the user type 
     `http://www.example.com/` in his browser.
 
 
-.. code-block:: python
+   .. code-block:: python
 
-    def hello_world(request, *args, **kwargs):
-        return "<p>Hello, World!</p>"
-
-
-*  This is the heavy lifting part of our application, you can call it the `controller` or the `view` function. However, We will call it `handler`. 
+      def hello_world(request, *args, **kwargs):
+          return "<p>Hello, World!</p>"
 
 
-   Whatever the name, This method is the building block of your application. You should create your functions by the same or equaivalent signature:
-    - recieve the `request` object as first positional argument.
-    - recieves many arguments `*args` ( we will talk about this shortly)
-    - recieves many keywords `**kwargs` ( has no use now, but better to be ready for possible future implementation. by writing the function by this way, your legacy code willn't break in the future)
+-  This is the heavy lifting part of our application, you can call it the `controller` or the `view` function. However, We will call it `handler`. 
+
+
+   Whatever the name, This method is the building block of your application. You should create your functions by the same or equaivalent signature to ``hello_world`` function which:
+    - recieve the ``request`` object as first positional argument.
+    - recieves many arguments ``*args`` ( we will talk about this shortly )
+    - recieves many keywords ``**kwargs`` ( has no use now, but better to be ready for possible future implementation. by writing the function by this way, your legacy code willn't break in the future)
     - lastly, the function returns the result you want to display in the user browser. In our case it is just `return "<p>Hello, World!</p>"`.
     
 
@@ -136,85 +129,80 @@ And the last line:
       koreapp =app
 
 
-* This line is very important. till this release, the `kore` server will search for this name `koreapp`. If you forget to specify your app with this name, The `kore` will shutdown silently or at least will not serve your application.
+* This line is very important. till this release, the `kore` server will search for this name `koreapp`. If you forget to specify your application instance with this name, The `kore` will shutdown silently or at least will not serve your application.
 
 
 
-.. admonition:: can't find application::
-
-    `Qor` tries to be smart, when you type `qor run` it search for the your application in the following order.
-          
-          
-       1. first, from the command line, if you type:
+Warning: can't find application
+===============================
 
 
-          .. code-block:: sh
-           
-              $ qor run /path/to/my/app.py
+     * `Qor` tries to be smart, when you type ``qor run`` it search for the your application in the following order.
+
+         - first, from the command line, if you type:
 
 
-       `qor` will use this path and will not try to search beyond it.
+            .. code-block:: sh
 
-          
-       1. then from the enviroment variable `KORE_APP`.
-       2. then from file named `app.py` that presents in the current working dir.
-
-       To debug, you will find a line like this:
-
-       >> $ got app 'path/to/the/app.py'
+                $ qor run /path/to/my/app.py
 
 
+         `qor` will use this path and will not try to search beyond it.
 
-.. warning:: development server
 
-    you can run your app by `kore <PATH>` command. Internally, The `qor run` command is executing `kore <PATH>`. But there is 2 important differences:
+         - then from the enviroment variable `KORE_APP`.
+         - then from file named `app.py` that presents in the current working dir.
 
-    - this command is suitable for development and you shouldn't use it in production (use `kore <>` in production).
+         To debug, you will find a line like this:
+         
+            .. code-block:: sh
+       
+                 got app 'path/to/the/app.py'
+
+
+
+Warning: development server
+============================
+
+    you can run your app by ``kore <PATH>`` command. Internally, The `qor run` command is executing `kore <PATH>`. But there is 2 important differences:
+
+    - this command is suitable for development and you shouldn't use it in production (use `kore <PATH>` in production).
     - this command start a watcher for your files. If any `*.py` file change in your current directory or below it, the `kore` will be auto restarted for you.
 
-
-
-.. admonition:: auto restarting
-
-    This behavior is suitable for development and will give you a suitable enviroment. You can focus on your real work instead of being busy by remembring to restart the server after each minor changes. But you should know the internals of it. 
-    For each restart, the `kore` server been killed then launched again again. If there is an error in killing the `kore` ( which may occur rarley), you should manually kill it.
-    In short, killing `kore` is done by sending `SIGTERM` or `SIGQUIT` to its process.
+    This is suitable for development and will give you a suitable enviroment. You can focus on your real work instead of being busy by remembring to restart the server after each minor change. But you should know the internals of it.
+    
+    There is no magic behind restart, For each restart, ``Qor`` kill the ``kore`` server and launch it again. That simple, but, If there is an error in killing the `kore` ( which may occur rarley ), you should manually kill it by sending `SIGTERM` or `SIGQUIT` to its process.
+    First, You should know how to get the id of ``kore``. It is writtin in a file named ``kore.pid`` (filename may be overriden by the configuration key ``pidfile``). Then you can kill the process:
     
     In linux, you can type:
 
-      .. code-block:: sh
+    .. code-block:: sh
           
-             $ kill KOR_PROCESS_ID
-           
-
-      >> How to know the pid?
-      >>> It is writting the `kore.pid` file. or you can search fro it by :abbreviation:
-
-      .. code-block:: sh
+        $ kill KOR_PROCESS_ID
+    
+    If for any reason, you can't get the pid from the file, you should search for it using system commands. In linux you can type:
+    
+    .. code-block:: sh
           
-             $ pidof kore
-      
-          If the `kore` server still running, the next time you try to run `qor` you will got error states that the `kore` can't create server on the `127.0.0.1:8888` because the port is already in use..
+        $ pidof kore
+    
+    Most of the times, you willn't use this commands becasde restarting often runs smoothly. If the ``kore`` server continue to run, the next time you try to execute ``qor run`` command, you will get error states that the ``bind(): Address already in use``.
+    
+    Now, You have enough knweldge. when you encounter this error, you should search for the ``kore`` process and kill it.
 
 
 Routing
 -------
 
-Modern web applications use meaningful URLs to help users. Users are more
-likely to like a page and come back if the page uses a meaningful URL they can
-remember and use to directly visit a page.
+Modern web applications use meaningful URLs to help users. Users are more likely to like a page and come back if the page uses a     meaningful URL they can remember and use to directly visit a page.
 
-Use the `~qor.Qor.route` decorator to bind a function to a URL.
-
-
+to bind your handler to a url path, use the `~qor.Qor.route` decorator.
 
 .. code-block:: python
 
       @app.route('/')
       def hello_world(request, *args, **kwargs):
           return '<p>Hello World</>'
-
-
 
 Also, There is many alternatives like `~qor.Qor.get`, `~qor.Qor.post`, `~qor.Qor.put`, `~qor.Qor.patch` and `~qor.Qor.delete` decorators. they create routes specified for thier methods only. You can also specify the method as an argument to the `~qor.Qor.route` decorator:
 
@@ -243,14 +231,16 @@ Also, There is many alternatives like `~qor.Qor.get`, `~qor.Qor.post`, `~qor.Qor
 Dynamic Routing
 ```````````````
 
+Most of times, you need to specify a variable part in your route, that what is called ``dynamic routing``. route like ``/posts/<post_id>`` is adynamic route, because you specify it with the variable `post_id` and ``kore`` will translate this variable rto its value during routing. ``Qor`` also will make sure that you recieve the correct argument type.
 
-Most of times, you need to specify a variable part in your route. route like `/posts/<post_id>` is adynamic route, because you specify it with the variable `post_id` and `Qor` will translate this variable during routing.
+
+This is the time to know why our handlers has ``*args`` in its declaration. Because ``Qor`` will send the path parameters as ``args`` to your handler.
 
 
 .. code-block:: python
 
     @app.route('/user/<username>')
-    def user_page(request,  *args, **kwargs):
+    def user_page(request, *args, **kwargs):
         username = args[0]
         return f'User {username}'
     
@@ -259,13 +249,10 @@ Most of times, you need to specify a variable part in your route. route like `/p
     def user_page(request, username, **kwargs):
         return f'User {username}'
     
-
     @app.route('/post/<post_id:int>')
     def show_post(request, post_id, **kwargs):
         # show the post with the given id, the id is an integer
         return f'Post {str(post_id)}'
-
-
 
 You can use the following converters inside the path decleration:
 
@@ -278,22 +265,21 @@ You can use the following converters inside the path decleration:
 
 The dynamic path part should be one of the following syntaxes:
 
-======================================= ================================================================
-``<variable_name>``                      The `<variable_name>` will be a string (default) 
+======================================= =====================================================================
+``<variable_name>``                      The `<variable_name>` will be a string. 
 ``<variable_name:converter_name>``       The `<variable_name>` will be the same type of the converter 
-``<variable_name:re:MY_REGEX_HERE>``     The `<variable_name>`
-======================================= ================================================================
+``<variable_name:re:MY_REGEX_HERE>``     The `<variable_name>` will be validated by regex & passed as string
+======================================= =====================================================================
 
 
 URL Reversing
 `````````````
 
-You know that the `/posts/<post_id:int>` is the dynamic path that will translate to `posts/1` or `posts/2` during routing. Now, you should ask: How to build url for specific post?
+You know that the ``/posts/<post_id:int>`` is the dynamic path that will translate to ``posts/1`` or ``posts/2`` etc during routing. Now, you should ask: **How to build url for specific post?**
 
-Ofcourse, you can do something like `post_path = '/posts/'+post_id`, but this is unmaintainable error prone code.
-So, the idea of url reversing come to fill this niche. 
+Ofcourse, you can do something like ``post_path = '/posts/'+post_id``, but this is unmaintainable error prone code. So, the idea of url reversing come to fill this niche. 
 
-First, we should name the routes that we want to build url for it, Each route can optionally have a name, you pass it as argument to the decorator.
+First, we should name the routes that we want to build url for it, you should pass the name as argument to the decorator.
 
 .. code-block:: python
 
@@ -316,7 +302,7 @@ First, we should name the routes that we want to build url for it, Each route ca
     koreapp = app
 
 
-Now `Qor` knows that you name the `index` handler as `index_page` and you intend to use this name in building url for this route. similiary, `Qor` knows that the `post_list` and `post_detail` are the names that should reverse to the `posts` & `single_post` handlers respectively. To build a URL to a specific handler, you can use the `~qor.Qor.reverse` method or its proxy `~qor.Request.reverse`. It accepts the name of the route as its first argument and any number of keyword arguments, each corresponding to a variable part of the route.
+Now ``Qor`` knows that you name the `/` path as `index_page` and you intend to use this name to get the path. similiary, ``Qor`` knows that the ``post_list`` and ``post_detail`` are the names that should reverse to the ``/posts`` & ``/posts/<id>`` respectively. To build a URL to a specific route, you can use the `~qor.Qor.reverse` method or its proxy `~qor.Request.reverse`. It accepts the name of the route as its first argument and any number of keyword arguments, each corresponding to a variable part of the route.
  
 
 .. code-block:: python
@@ -354,8 +340,7 @@ Rendering Templates
 .. warning:: 
     (This feature is not completed yet)
 
-`Qor` has a provision feature for creating templates for you. To render a template you can use the `~qor.Request.render_template` method.  All you have to do is provide the name of the template and the
-variables you want to pass to the template engine as keyword arguments.
+`Qor` has a provision feature for creating templates for you. To render a template you can use the `~qor.Request.render_template` method.  All you have to do is provide the name of the template and the variables you want to pass to the template engine as keyword arguments.
 Here's a simple example of how to render a template::
 
 
@@ -369,18 +354,16 @@ Here's a simple example of how to render a template::
       return request.render_template("post_list.html", posts=posts)
 
 
-`Qor` will search for the `post_list.html` template in the `templates` folder, next to your app (This behavior can be changed).
+``Qor`` will search for the ``post_list.html`` template in the ``templates`` folder, next to your app.
 
-**Example**: a module::
+**Example**:
 
     app.py
     /templates
         /post_list.html
 
 
-For templates you can use the full power of Jinja2 templates.  Head over
-to the official `Jinja2 Template Documentation
-<https://jinja.palletsprojects.com/templates/>`_ for more information.
+For templates you can use the full power of Jinja2 templates.  Head over to the official `Jinja2 Template Documentation <https://jinja.palletsprojects.com/templates/>`_ for more information.
 
 Here is an example template:
 
@@ -392,29 +375,27 @@ Here is an example template:
     {% for post in posts %}
 
     <h3>{{post.title}}</h3>
-    <a href="{{  request.reverse('post_detail', post_id=post.post_id)  }}">show</a>
+    <a href="{{  reverse('post_detail', post_id=post.post_id)  }}">show</a>
 
     {% endfor %}
-    
 
-Inside templates you also have access to the:
 
-`app`, `~qor.wrappers.Request`, `~qor.g` and `~qor.reverse` 
+Inside templates you also have access to the: `app`, `~qor.wrappers.Request`, `~qor.g` and `~qor.reverse` . In the above example, we use the ``reverse`` method for creating the post links dynamically.
  
 
 
 Accessing Request Data
 ----------------------
 
-For web applications it's crucial to react to the data a client sends to
-the server. In Qor this information is provided by the request object that your handler recieve as a first argument.
+For web applications it's crucial to react to the data a client sends to the server. In Qor this information is provided by the request object that your handler recieve as a first argument. 
+
 In general, It is a thin wrapper around the `kore.http_request` that `kore` pass on each request. head over `kore documentation <https://docs.kore.io/4.2.0/api/python.html#httpmodule>`_ for more information.
 
 In the `Request` object you can access:
 
 1. app : `Qor` application.
 2. route: the route info if available (always available inside your handler).
-3. g: an empty dictionary, that is specific for each reaquest & can be used for storing data across the request lifetime.
+3. g: an empty dictionary, that is specific for each reaquest and can be used for storing data across the request lifetime.
 4. method: the request method `get`, `post` etc.
 5. host
 6. agent
@@ -440,11 +421,10 @@ In the `Request` object you can access:
 Cookies
 ```````
 
-To access cookies you can use the `~qor.Request.cookie`
-method. To set cookies you can use the  `~qor.Request.set_cookie`
+To access cookies you can use the `~qor.Request.cookie` method. To set cookies you can use the  `~qor.Request.set_cookie`.
+
 
 Reading cookies::
-
 
     from qor import Qor
 
@@ -484,15 +464,16 @@ To redirect a user to another route, use the `~qor.Request.redirect`:
 About Responses
 ---------------
 
-The return value from a handler function is automatically converted into
-a response object for you. The status and the content type are assumed from the response.
+The return value from a handler function is automatically converted into a response object for you. The status and the content type are assumed from the response.
 
 `Qor` expect to recieve a tuple of 2-objects or one object.
 
 1. If you return a tuple, The first item of it should be the integer status code. The second object will be used as the response body.
-2. If you return an object, The status code assumed to be 200, and the object will be used as a response body.
+2. If you return an object instead of a 2-tuple, The status code assumed to be ``200``, and the object will be used as a response body.
+
 
 The returned object determines the content type:
+
 1. `str`, `bytes`, `int`, `float`: the content type will be `text/html`.
 2. `list`, `dict`: the content type will be `application/json`
 
@@ -563,7 +544,7 @@ Here are some example log calls::
     request.log_error(' error data to be logged ')
     request.log_exception(exception)
     
-In development, The log messages will be displayed on the terminal. for development, You should set the `logfile` config and pass it to `Qor`
+In development, The log messages will be displayed on the terminal. for development, You should set the `logfile` config and pass it to `Qor`::
 
 
     from qor import Qor
