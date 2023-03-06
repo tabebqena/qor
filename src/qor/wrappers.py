@@ -646,6 +646,18 @@ class Request(BaseRequest):
         )
         return self.app._render_template(template_name, *args, **kwargs)
 
+    def log_info(self, message: str):
+        self.app.log(message, self.app.LOG_INFO)
+
+    def log_notice(self, message: str):
+        self.app.log(message, self.app.LOG_NOTICE)
+
+    def log_error(self, message: str):
+        self.app.log(message, self.app.LOG_ERR)
+
+    def log(self, message: str, priority: int):
+        self.app.log(message, priority)
+
 
 class KoreDomain:
     def __init__(
