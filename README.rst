@@ -488,7 +488,7 @@ started writing such an API with `Qor`. If you return a ``dict`` or
 
 .. code-block:: python
 
-    @app.route("/me")
+    @app.route("/me") 
     def me_api(request, *args, **kwargs):
         user = get_current_user()
         return {
@@ -511,26 +511,48 @@ There are many serialization libraries that support more complex applications li
 Authentication
 --------------
 
-No surprise, ``kore`` has a builtin authentication system and ``Qor`` implements it in a fine way. To register auth handler, you should use ``qor.Qor.auth``, ``qor.Qor.header_auth`` or ``qor.Qor.cookie_auth`` decorators.
+No surprise, ``kore`` has a builtin authentication system and ``Qor`` implements it in a fine way. To register auth handler, you should use ``qor.Qor.auth``, ``qor.Qor.header_auth`` or ``qor.Qor.cookie_auth``.
 
-The first srgument is a name you provide to reference this handler later.
+for the ``qor.Qor.auth``: 
+
+- The first argument is a name you provide to reference this handler later, 
+- The second argument is the auth location (either cookie or headers), 
+- The third argument is the name of the header or the cookie 
+- and the forth argument ( which is optional ) is the redirection url if authentication failed, if you omit this argument, THe user will recieves a ``403`` response.
+
+The ``qor.Qor.header_auth`` and the ``qor.Qor.cookie_auth`` decorators recieves the same arguemnts except the second one.
+
+The authentication handler itself, should accept the ``request`` object as first argument and the value of the authentication header or cookie as the second argument and should return ``True`` it ``False``.
+
+This is an example of registering authentication handler with the name ``user_only`` and it uses ``X-AuthToken`` header for authenticating the users.
 
 .. code-block:: python
 
    @app.auth("user_only", "header", "X-AuthToken")
-   def is_user(request, auth_value, **kwargs):
+   def is_user(request, auth_value, *args, **kwargs):
        for user in users:
            if user.get("token") == auth_value:
                request.g["user"] = user
                return True
        return False
-    
 
-   @app.route("/u", auth_name="user_only")
+
+After registering your authentication handler, you can use it. Just by passing it to the ``route`` deorator as a keyword ``auth_name``.
+
+
+.. code-block:: python
+
+   @app.route("/secret", auth_name="user_only")
    def user_only(request, **kwargs):
        return f"Welcome {request.g.get('user', {}).get('name')}"
 
-``TODO``: more declaration of the auth system.
+That is it, There is different scenarios when a user make a request to the ``/secret`` route: 
+
+- The user doesn't specifiy the ``AuthToken`` header, then, the request will be treated as unauthenticated.
+- The user specify `AuthToken` header, its value will be passed to the ``user_only`` handler, if it return ``False``, the user  will be treated as unauthenticated.
+-  The user specify `AuthToken` header and the ``user_only`` handler return ``True``, So the the user can access the ``/secret`` endpoint.
+  
+If the user is unauthenticated, and you specify the forth optional argument of the ``auth`` decorator, so, The user will be redirected to that path, else, he will recieve ``403`` response.
 
 
 Sessions
