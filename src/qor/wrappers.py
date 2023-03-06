@@ -1,4 +1,5 @@
 import json
+import traceback
 from inspect import isclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
 
@@ -654,6 +655,11 @@ class Request(BaseRequest):
 
     def log_error(self, message: str):
         self.app.log(message, self.app.LOG_ERR)
+
+    def log_exception(self, e: Exception):
+        self.log_error(
+            "".join(traceback.format_exception(None, e, e.__traceback__))
+        )
 
     def log(self, message: str, priority: int):
         self.app.log(message, priority)
