@@ -566,6 +566,9 @@ class Request(BaseRequest):
             req.response(200, b'hello world')"""
         return self.request.request_header(name)
 
+    def set_cookie(self, name, value):
+        return self.response_header("Set-Cookie", f"{name}={value}")
+
     def response_header(self, name: str, value) -> None:
         """Synopsis
         req.response_header(name, value)
