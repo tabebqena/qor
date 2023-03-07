@@ -89,11 +89,20 @@ def run(app, watch=True):
             fg="red",
         )
         return
+    relpath = app
     app = os.path.abspath(app)
 
     if not os.path.exists(app):
-        click.secho(message=f"app not found, {app}", err=True, fg="red")
+        click.secho(
+            message=f"app not found,\nInput: {relpath} \nAbsolute path: {app}",
+            err=True,
+            fg="red",
+        )
         return
+    click.secho(
+        f"Got app {app}",
+        fg="blue",
+    )
 
     logger = logging.getLogger()
     logger.setLevel(logging.DEBUG)
